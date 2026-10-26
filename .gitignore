@@ -1,0 +1,53 @@
+# ─── Node / Frontend ────────────────────────────────────────────────────────
+node_modules/
+dist/
+.vite/
+*.local
+
+# ─── Python / Backend ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+.venv/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# ─── Environment Variables (keep .env.example, ignore real secrets) ──────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─── Pytest / Coverage ───────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.xml
+
+# ─── mypy / linters ──────────────────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+
+# ─── Editor / OS ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/
