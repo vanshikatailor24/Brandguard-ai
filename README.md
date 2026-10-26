@@ -150,7 +150,7 @@ DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=brandguard_ai
 DB_USER=root
-DB_PASSWORD=your_actual_mysql_password
+DB_PASSWORD=root
 APP_ENV=development
 SECRET_KEY=brandguard_development_secret_key_2026
 ```
