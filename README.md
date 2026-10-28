@@ -4,16 +4,23 @@
 
 **Team Name:** SYNTAX DUO  
 **Team Members:** Vanshika Tailor · Lokendra Singh Shekhawat  
-**Repository:** `brandguard-ai` · **Working Branch:** `develop`
+**Repository:** [https://github.com/vanshikatailor24/Brandguard-ai](https://github.com/vanshikatailor24/Brandguard-ai) · **Working Branch:** `develop`
 
 ---
 
-## 👤 Demo / Judge Quick Access Credentials
+## 🔗 Application Links & Quick Access
 
+* **Frontend Web Application:** [http://localhost:5173](http://localhost:5173)
+* **Backend API Server:** [http://localhost:8000](http://localhost:8000)
+* **Interactive Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs) (or [http://localhost:8000/api/docs](http://localhost:8000/api/docs))
+* **System Health Check:** [http://localhost:8000/api/health](http://localhost:8000/api/health)
+* **GitHub Repository:** [https://github.com/vanshikatailor24/Brandguard-ai](https://github.com/vanshikatailor24/Brandguard-ai)
+
+### 👤 Demo / Judge Quick Access Credentials
 For hackathon evaluation and testing:
 * **Email:** `judge@brandguard.ai`
 * **Password:** `demo123`
-* **One-Click Access:** The web application login page includes a **"Demo Judge Access"** button that grants instant access with pre-seeded brand guidelines and analytics, even if the local MySQL database is offline.
+* **One-Click Access:** The web application login page includes a **"Demo Judge Access"** button that grants instant entry with pre-seeded brand guidelines and analytics, even if the local MySQL database is offline.
 
 ---
 
