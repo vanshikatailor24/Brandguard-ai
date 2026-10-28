@@ -26,7 +26,6 @@ app = FastAPI(
         "Backend API for Brandguard AI — an AI-assisted brand governance platform. "
         "Enforces brand guidelines, disclaimers, and copy consistency across enterprise communications."
     ),
-
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -56,6 +55,7 @@ _allow_all = "*" in _allowed_origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if _allow_all else _allowed_origins,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$" if not _allow_all else None,
     allow_credentials=not _allow_all,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,8 +71,6 @@ app.include_router(documents.router,        prefix="/api")
 app.include_router(images.router,           prefix="/api")
 app.include_router(insights.router,         prefix="/api")
 app.include_router(settings_router.router,  prefix="/api")
-
-
 
 from fastapi.responses import RedirectResponse
 
@@ -90,4 +88,3 @@ def root():
         "health": "/api/health",
         "version": "1.0.0",
     }
-

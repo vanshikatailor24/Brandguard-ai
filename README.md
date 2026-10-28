@@ -10,10 +10,11 @@
 
 ## 🔗 Application Links & Quick Access
 
-* **Frontend Web Application:** [http://localhost:5173](http://localhost:5173)
-* **Backend API Server:** [http://localhost:8000](http://localhost:8000)
-* **Interactive Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs) (or [http://localhost:8000/api/docs](http://localhost:8000/api/docs))
-* **System Health Check:** [http://localhost:8000/api/health](http://localhost:8000/api/health)
+* **Live Render Backend API:** [https://brandguard-ai-2-yclr.onrender.com](https://brandguard-ai-2-yclr.onrender.com)
+* **Live Interactive Swagger UI:** [https://brandguard-ai-2-yclr.onrender.com/docs](https://brandguard-ai-2-yclr.onrender.com/docs)
+* **Live Backend Health Check:** [https://brandguard-ai-2-yclr.onrender.com/api/health](https://brandguard-ai-2-yclr.onrender.com/api/health)
+* **Frontend Web Application (Local):** [http://localhost:5173](http://localhost:5173)
+* **Backend API Server (Local):** [http://localhost:8000](http://localhost:8000)
 * **GitHub Repository:** [https://github.com/vanshikatailor24/Brandguard-ai](https://github.com/vanshikatailor24/Brandguard-ai)
 
 ### 👤 Demo / Judge Quick Access Credentials

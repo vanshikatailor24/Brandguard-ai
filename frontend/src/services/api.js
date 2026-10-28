@@ -3,18 +3,27 @@
  * Centralised API client for all Brandguard AI backend calls.
  */
 
+// Live production backend URL on Render
+const DEFAULT_PROD_URL = 'https://brandguard-ai-2-yclr.onrender.com/api'
+
 function getApiBaseUrl() {
   const envUrl = import.meta.env.VITE_API_BASE_URL
-  if (!envUrl || !envUrl.trim()) {
-    // In local development, default to relative '/api' proxied by Vite to :8000
-    return '/api'
+  if (envUrl && envUrl.trim()) {
+    let cleaned = envUrl.trim().replace(/\/+$/, '')
+    // Normalize base URL so all relative paths (/health, /rules, /v1/auth/...) resolve correctly
+    if (!cleaned.endsWith('/api')) {
+      cleaned = `${cleaned}/api`
+    }
+    return cleaned
   }
-  let cleaned = envUrl.trim().replace(/\/+$/, '')
-  // Normalize base URL so all relative paths (/health, /rules, /v1/auth/...) resolve correctly
-  if (!cleaned.endsWith('/api')) {
-    cleaned = `${cleaned}/api`
+
+  // In production builds (e.g. deployed on Vercel), fall back to the live Render backend
+  if (import.meta.env.PROD) {
+    return DEFAULT_PROD_URL
   }
-  return cleaned
+
+  // In local development, default to relative '/api' proxied by Vite to :8000
+  return '/api'
 }
 
 const BASE_URL = getApiBaseUrl()
