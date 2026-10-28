@@ -114,10 +114,11 @@ export default function Login() {
   }
 
   function handleDemoJudgeLogin() {
-    setEmail('judge@syntaxduo.com')
+    setEmail('judge@brandguard.ai')
     setPassword('demo123')
-    performLogin('judge@syntaxduo.com', 'demo123')
+    performLogin('judge@brandguard.ai', 'demo123')
   }
+
 
   return (
     <div
@@ -270,7 +271,7 @@ export default function Login() {
                 marginTop: 6,
               }}
             >
-              One-click instant access with <code style={{ color: '#D8F3DC' }}>judge@syntaxduo.com</code>
+              One-click instant access with <code style={{ color: '#D8F3DC' }}>judge@brandguard.ai</code>
             </div>
 
             <div
@@ -346,7 +347,7 @@ export default function Login() {
               <input
                 id="signup-name"
                 type="text"
-                placeholder="e.g. Vanshika Tailor"
+                placeholder="e.g. Alex Morgan"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 disabled={loading}
@@ -383,7 +384,7 @@ export default function Login() {
             <input
               id="auth-email"
               type="email"
-              placeholder={mode === 'login' ? 'e.g. judge@syntaxduo.com' : 'e.g. you@company.com'}
+              placeholder={mode === 'login' ? 'e.g. judge@brandguard.ai' : 'e.g. you@company.com'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
@@ -565,9 +566,9 @@ export default function Login() {
           }}
         >
           <div>
-            Built by <strong style={{ color: '#A1A1AA' }}>SYNTAX DUO</strong>
+            Brandguard AI &middot; <strong style={{ color: '#A1A1AA' }}>Enterprise Brand Governance</strong>
           </div>
-          <div>Vanshika Tailor &middot; Lokendra Singh Shekhawat</div>
+          <div>Automated Compliance, Identity Assurance &amp; Copy Audit</div>
         </div>
       </div>
     </div>

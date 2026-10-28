@@ -13,19 +13,19 @@ class TestAuthEndpoints:
     def test_demo_login_success(self):
         response = client.post(
             "/api/v1/auth/login",
-            json={"email": "judge@syntaxduo.com", "password": "demo123"},
+            json={"email": "judge@brandguard.ai", "password": "demo123"},
         )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
         assert data.get("token_type") == "bearer"
-        assert data.get("user", {}).get("email") == "judge@syntaxduo.com"
+        assert data.get("user", {}).get("email") == "judge@brandguard.ai"
         assert data.get("user", {}).get("role") == "judge"
 
     def test_demo_login_on_unversioned_route(self):
         response = client.post(
             "/api/auth/login",
-            json={"email": "judge@syntaxduo.com", "password": "demo123"},
+            json={"email": "judge@brandguard.ai", "password": "demo123"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -69,10 +69,10 @@ class TestAuthEndpoints:
         assert response.json().get("status") == "valid"
 
     def test_auth_me_returns_judge_profile(self):
-        response = client.get("/api/v1/auth/me?email=judge@syntaxduo.com")
+        response = client.get("/api/v1/auth/me?email=judge@brandguard.ai")
         assert response.status_code == 200
         data = response.json()
-        assert data.get("email") == "judge@syntaxduo.com"
+        assert data.get("email") == "judge@brandguard.ai"
         assert data.get("role") == "judge"
         assert data.get("company") is not None
         assert data.get("has_completed_onboarding") is True
@@ -84,7 +84,7 @@ class TestAuthEndpoints:
                 "company_name": "Acme Global Dynamics",
                 "industry_type": "Software/SaaS",
                 "tagline": "Empowering enterprise brands safely",
-                "user_email": "judge@syntaxduo.com",
+                "user_email": "judge@brandguard.ai",
             },
         )
         assert response.status_code == 200
@@ -92,4 +92,5 @@ class TestAuthEndpoints:
         assert data.get("success") is True
         assert data.get("company", {}).get("name") == "Acme Global Dynamics"
         assert data.get("company", {}).get("industry_type") == "Software/SaaS"
+
 

@@ -22,8 +22,9 @@ function StatCard({ label, value, sub, icon }) {
 export default function Overview() {
   const navigate = useNavigate()
   const user = auth.getUser()
-  const displayName = user?.full_name || user?.name || (user?.email ? user.email.split('@')[0] : 'Vanshika Tailor')
+  const displayName = user?.full_name || user?.name || (user?.email ? user.email.split('@')[0] : 'Brand Administrator')
   const companyName = user?.company?.name
+
 
   const { data: reviewsData, loading: reviewsLoading, error: reviewsError } =
     useFetch(() => api.getReviews({ limit: 5 }), [])

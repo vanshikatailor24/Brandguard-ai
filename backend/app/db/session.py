@@ -35,7 +35,7 @@ def get_db() -> Generator[Session, None, None]:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
                 "Database is not configured. "
-                "Copy backend/.env.example to backend/.env and fill in your MySQL credentials."
+                "Set DATABASE_URL (PostgreSQL) or individual DB_* credentials in backend/.env."
             ),
         )
     db: Session = _SessionLocal()
@@ -55,12 +55,12 @@ def check_db_connection() -> dict:
             "status": "not_configured",
             "message": (
                 "Database credentials are missing. "
-                "Copy backend/.env.example to backend/.env and fill in your MySQL credentials."
+                "Set DATABASE_URL (PostgreSQL) or individual DB_* credentials in backend/.env."
             ),
         }
     try:
         with _engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return {"status": "connected", "message": "MySQL connection successful."}
+        return {"status": "connected", "message": "Database connection successful."}
     except Exception as exc:
         return {"status": "error", "message": str(exc)}

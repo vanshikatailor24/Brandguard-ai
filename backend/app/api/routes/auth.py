@@ -21,8 +21,11 @@ from app.core.security import hash_password, verify_password
 
 router = APIRouter(tags=["Authentication"])
 
-DEMO_EMAIL = "judge@syntaxduo.com"
+DEMO_EMAIL = "judge@brandguard.ai"
+DEMO_EMAILS = {"judge@brandguard.ai"}
 DEMO_PASS = "demo123"
+
+
 
 DEFAULT_DEMO_COMPANY = CompanyBrief(
     id=1,
@@ -136,19 +139,20 @@ def signup(payload: SignUpRequest):
 def login(payload: LoginRequest):
     """
     Authenticate user with email and password.
-    Includes built-in instant fallback for demo judge credentials (judge@syntaxduo.com / demo123).
+    Includes built-in instant fallback for demo judge credentials (judge@brandguard.ai / demo123).
     """
+
     clean_email = payload.email.strip().lower()
     clean_password = payload.password.strip()
 
     # 1. Check for instant demo access (works even if DB is offline or empty)
-    if clean_email == DEMO_EMAIL and clean_password == DEMO_PASS:
+    if clean_email in DEMO_EMAILS and clean_password == DEMO_PASS:
         # Check if DB has updated company for judge
         company_brief = DEFAULT_DEMO_COMPANY
         if _SessionLocal is not None and settings.db_configured:
             try:
                 with _SessionLocal() as db:
-                    u = db.query(User).filter(User.email == DEMO_EMAIL).first()
+                    u = db.query(User).filter(User.email.in_(DEMO_EMAILS)).first()
                     if u and u.company:
                         company_brief = _build_company_brief(u.company) or DEFAULT_DEMO_COMPANY
             except Exception:
@@ -159,16 +163,17 @@ def login(payload: LoginRequest):
             token_type="bearer",
             user=UserResponse(
                 id=1,
-                email=DEMO_EMAIL,
-                full_name="SYNTAX DUO Judge",
+                email=clean_email,
+                full_name="Demo Judge",
                 role="judge",
-                name="SYNTAX DUO Judge",
+                name="Demo Judge",
                 company_id=company_brief.id,
                 company=company_brief,
                 has_completed_onboarding=True,
             ),
             message="Demo judge access granted.",
         )
+
 
     # 2. Check in database if configured
     if _SessionLocal is not None and settings.db_configured:
@@ -220,7 +225,7 @@ def get_current_user_profile(
     is_demo = False
     if authorization and ("demo-token" in authorization.lower()):
         is_demo = True
-    if target_email == DEMO_EMAIL:
+    if target_email in DEMO_EMAILS:
         is_demo = True
 
     if is_demo or not target_email:
@@ -230,7 +235,7 @@ def get_current_user_profile(
         if _SessionLocal is not None and settings.db_configured:
             try:
                 with _SessionLocal() as db:
-                    u = db.query(User).filter(User.email == DEMO_EMAIL).first()
+                    u = db.query(User).filter(User.email.in_(DEMO_EMAILS)).first()
                     if u:
                         created_at = u.created_at
                         if u.company:
@@ -240,14 +245,15 @@ def get_current_user_profile(
 
         return UserProfileResponse(
             id=1,
-            email=DEMO_EMAIL,
-            full_name="SYNTAX DUO Judge",
-            name="SYNTAX DUO Judge",
+            email=target_email if target_email in DEMO_EMAILS else "judge@brandguard.ai",
+            full_name="Demo Judge",
+            name="Demo Judge",
             role="judge",
             created_at=created_at,
             company=company_brief,
             has_completed_onboarding=True,
         )
+
 
     # Database query for registered user
     if _SessionLocal is not None and settings.db_configured:

@@ -1,11 +1,21 @@
 # Project Overview — Brandguard AI
 
-> **Team:** SYNTAX DUO (Vanshika Tailor & Lokendra Singh Shekhawat)  
 > **Repository:** `brandguard-ai` · **Branch:** `develop`
 
 ---
 
+
+## 🔗 Application Endpoints & Quick Links
+
+* **Frontend Web Application:** [http://localhost:5173](http://localhost:5173)
+* **Backend API Server:** [http://localhost:8000](http://localhost:8000)
+* **Interactive Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs) (or [http://localhost:8000/api/docs](http://localhost:8000/api/docs))
+* **System Health Check:** [http://localhost:8000/api/health](http://localhost:8000/api/health)
+
+---
+
 ## Product Summary
+
 
 **Brandguard AI** is a multi-company brand governance platform designed to help organisations consistently enforce their brand identity across all communications.
 
@@ -62,5 +72,6 @@ ORM:        SQLAlchemy 2.0 (Declarative Base)
 Database:   MySQL 8 (via PyMySQL driver)
 Document:   pypdf, python-docx
 Image:      Pillow (PIL)
-Testing:    pytest (33 unit & integration tests)
+Testing:    pytest (41 unit & integration tests)
 ```
+
