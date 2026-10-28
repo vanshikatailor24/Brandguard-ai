@@ -1,22 +1,25 @@
 """
 backend/app/db/session.py
 SQLAlchemy engine and session factory.
-The engine is created lazily — only when DB credentials are configured.
+Supports cloud PostgreSQL, cloud MySQL, local MySQL, and automatic SQLite fallback.
 """
+from typing import Generator
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
-from typing import Generator
+from fastapi import HTTPException, status
+
 from app.core.config import get_settings
 
 settings = get_settings()
 
-# Only build an engine when credentials are present
 _engine = None
 _SessionLocal = None
 
 if settings.db_configured:
     connect_args = {}
-    if "mysql" in settings.database_url or "postgresql" in settings.database_url:
+    if "sqlite" in settings.database_url:
+        connect_args["check_same_thread"] = False
+    elif "mysql" in settings.database_url or "postgresql" in settings.database_url:
         connect_args["connect_timeout"] = 5
 
     _engine = create_engine(
@@ -27,8 +30,6 @@ if settings.db_configured:
     )
     _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
-
-from fastapi import HTTPException, status
 
 def get_db() -> Generator[Session, None, None]:
     """
@@ -55,17 +56,26 @@ def check_db_connection() -> dict:
     Attempt a lightweight query to verify the DB is reachable.
     Returns a status dict suitable for the health endpoint.
     """
-    if not settings.db_configured:
+    if not settings.db_configured or _engine is None:
         return {
             "status": "not_configured",
             "message": (
                 "Database credentials are missing. "
-                "Set DATABASE_URL (PostgreSQL) or individual DB_* credentials in backend/.env."
+                "Set DATABASE_URL (PostgreSQL/MySQL) in Render environment variables or backend/.env."
             ),
         }
     try:
         with _engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return {"status": "connected", "message": "Database connection successful."}
+        engine_type = (
+            "sqlite"
+            if "sqlite" in settings.database_url
+            else ("postgresql" if "postgresql" in settings.database_url else "mysql")
+        )
+        return {
+            "status": "connected",
+            "engine": engine_type,
+            "message": f"Database connection successful ({engine_type}).",
+        }
     except Exception as exc:
         return {"status": "error", "message": str(exc)}

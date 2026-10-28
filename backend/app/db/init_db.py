@@ -19,10 +19,16 @@ def init_db() -> bool:
     status = check_db_connection()
     if status.get("status") != "connected":
         print(f"Error: {status.get('message')}")
-        print("Please configure your MySQL credentials in backend/.env before running init_db.")
+        print("Please configure DATABASE_URL in Render or MySQL credentials in backend/.env before running init_db.")
         return False
 
-    target = f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}" if not settings.DATABASE_URL else "cloud database URL"
+    if "sqlite" in settings.database_url:
+        target = "local SQLite storage (./brandguard.db)"
+    elif settings.DATABASE_URL:
+        target = "cloud database (PostgreSQL/MySQL)"
+    else:
+        target = f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+
     print(f"Connected to database successfully ({target}).")
     print("Creating tables if they do not already exist...")
     Base.metadata.create_all(bind=_engine)
@@ -173,7 +179,6 @@ def init_db() -> bool:
                 existing_user.company_id = company.id
             existing_user.full_name = "Demo Judge"
             db.commit()
-
 
     print("Database initialization complete.")
     return True

@@ -34,10 +34,14 @@ export default function ReviewHistory() {
 
       {error && (
         <div className="alert alert-warning" style={{ marginBottom: 20 }}>
-          ⚠️ Could not load review history: {error}
-          <button className="btn btn-ghost btn-sm" style={{ marginLeft: 12 }} onClick={refetch}>
-            Retry
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <strong>⚠️ Notice:</strong> {error}
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={refetch}>
+              Retry
+            </button>
+          </div>
         </div>
       )}
 

@@ -3,6 +3,7 @@ backend/app/main.py
 FastAPI application entry point for Brandguard AI.
 """
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,6 +19,18 @@ from app.api.routes import (
     company,
 )
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure database tables and starter seed data exist on startup
+    try:
+        from app.db.init_db import init_db
+        init_db()
+    except Exception as exc:
+        print(f"[Startup] DB initialization notice: {exc}")
+    yield
+
+
 # ── Application setup ──────────────────────────────────────────────────────────
 
 app = FastAPI(
@@ -30,6 +43,7 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
+    lifespan=lifespan,
 )
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
