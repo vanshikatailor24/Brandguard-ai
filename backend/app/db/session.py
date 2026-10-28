@@ -15,8 +15,13 @@ _engine = None
 _SessionLocal = None
 
 if settings.db_configured:
+    connect_args = {}
+    if "mysql" in settings.database_url or "postgresql" in settings.database_url:
+        connect_args["connect_timeout"] = 5
+
     _engine = create_engine(
         settings.database_url,
+        connect_args=connect_args,
         pool_pre_ping=True,   # detect stale connections automatically
         pool_recycle=3600,    # recycle connections every hour
     )

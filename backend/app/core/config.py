@@ -41,12 +41,15 @@ class Settings(BaseSettings):
         Fixes Render's 'postgres://' prefix to 'postgresql+psycopg2://'.
         """
         if self.DATABASE_URL:
-            url = self.DATABASE_URL
-            # Render supplies postgres:// — SQLAlchemy 2.x needs postgresql://
+            url = self.DATABASE_URL.strip()
+            # Render supplies postgres:// — SQLAlchemy 2.x needs postgresql+psycopg2://
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+psycopg2://", 1)
             elif url.startswith("postgresql://") and "+psycopg2" not in url:
                 url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            # Cloud MySQL providers often provide mysql:// — SQLAlchemy needs mysql+pymysql://
+            elif url.startswith("mysql://") and "+pymysql" not in url:
+                url = url.replace("mysql://", "mysql+pymysql://", 1)
             return url
         if not self.DB_USER or not self.DB_PASSWORD:
             return ""

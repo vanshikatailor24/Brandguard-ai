@@ -34,23 +34,29 @@ app = FastAPI(
 )
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
-# FRONTEND_URL is set as an environment variable on Render (the deployed frontend).
-_allowed_origins = [
+_default_origins = [
     "http://localhost:5173",   # default Vite dev port
     "http://localhost:5174",   # secondary Vite dev port
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
 ]
-_frontend_url = os.getenv("FRONTEND_URL", "").strip()
-if _frontend_url:
-    _allowed_origins.append(_frontend_url)
-    # Also allow without trailing slash variant
-    _allowed_origins.append(_frontend_url.rstrip("/"))
+
+# Support both FRONTEND_URL and CORS_ORIGINS (comma-separated or single URL)
+_raw_origins = os.getenv("CORS_ORIGINS", "").strip() or os.getenv("FRONTEND_URL", "").strip()
+_allowed_origins = list(_default_origins)
+
+if _raw_origins:
+    for origin in _raw_origins.split(","):
+        clean_origin = origin.strip().rstrip("/")
+        if clean_origin and clean_origin not in _allowed_origins:
+            _allowed_origins.append(clean_origin)
+
+_allow_all = "*" in _allowed_origins
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allowed_origins,
-    allow_credentials=True,
+    allow_origins=["*"] if _allow_all else _allowed_origins,
+    allow_credentials=not _allow_all,
     allow_methods=["*"],
     allow_headers=["*"],
 )

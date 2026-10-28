@@ -3,7 +3,21 @@
  * Centralised API client for all Brandguard AI backend calls.
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api'
+function getApiBaseUrl() {
+  const envUrl = import.meta.env.VITE_API_BASE_URL
+  if (!envUrl || !envUrl.trim()) {
+    // In local development, default to relative '/api' proxied by Vite to :8000
+    return '/api'
+  }
+  let cleaned = envUrl.trim().replace(/\/+$/, '')
+  // Normalize base URL so all relative paths (/health, /rules, /v1/auth/...) resolve correctly
+  if (!cleaned.endsWith('/api')) {
+    cleaned = `${cleaned}/api`
+  }
+  return cleaned
+}
+
+const BASE_URL = getApiBaseUrl()
 
 async function request(path, options = {}) {
   const url = `${BASE_URL}${path}`

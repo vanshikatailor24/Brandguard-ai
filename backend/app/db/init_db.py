@@ -22,7 +22,8 @@ def init_db() -> bool:
         print("Please configure your MySQL credentials in backend/.env before running init_db.")
         return False
 
-    print(f"Connected to MySQL at {settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}")
+    target = f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}" if not settings.DATABASE_URL else "cloud database URL"
+    print(f"Connected to database successfully ({target}).")
     print("Creating tables if they do not already exist...")
     Base.metadata.create_all(bind=_engine)
     print("Tables verified/created successfully.")
