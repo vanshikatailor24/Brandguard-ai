@@ -19,8 +19,9 @@ function getInitials(name, email) {
   if (email) {
     return email.substring(0, 2).toUpperCase()
   }
-  return 'SD'
+  return 'BG'
 }
+
 
 export default function TopBar({ title, badge }) {
   const navigate = useNavigate()
@@ -79,8 +80,9 @@ export default function TopBar({ title, badge }) {
     navigate('/login', { replace: true })
   }
 
-  const fullName = user.full_name || user.name || (user.email ? user.email.split('@')[0] : 'SYNTAX DUO Judge')
-  const email = user.email || 'judge@syntaxduo.com'
+  const fullName = user.full_name || user.name || (user.email ? user.email.split('@')[0] : 'Demo Judge')
+  const email = user.email || 'judge@brandguard.ai'
+
   const initials = getInitials(fullName, email)
   const roleLabel = user.role === 'judge' ? 'Brand Administrator / Judge' : (user.role === 'admin' ? 'Brand Administrator' : 'Brand Contributor')
   const companyName = user.company?.name || 'Brandguard AI Enterprise'

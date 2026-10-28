@@ -44,11 +44,13 @@ export default function Onboarding() {
         setCustomIndustry(ind)
       }
       setTagline(currentUser.company.tagline || '')
-    } else if (currentUser.email === 'judge@syntaxduo.com') {
+    } else if (currentUser.email === 'judge@brandguard.ai') {
       setCompanyName('Brandguard AI Enterprise')
+
       setIndustryType('Software/SaaS')
       setTagline('AI-assisted brand governance for modern companies')
     }
+
   }, [])
 
   async function handleSubmit(e) {
@@ -144,8 +146,9 @@ export default function Onboarding() {
                 Brandguard <span style={{ color: '#C5A46D' }}>AI</span>
               </div>
               <div style={{ fontSize: '11px', color: 'rgba(247,246,240,0.5)', letterSpacing: '0.5px' }}>
-                BY SYNTAX DUO
+                ENTERPRISE GOVERNANCE
               </div>
+
             </div>
           </div>
           <span
@@ -212,7 +215,7 @@ export default function Onboarding() {
             <input
               id="company-name-input"
               type="text"
-              placeholder="e.g. Acme Corporation or Syntax Dynamics"
+              placeholder="e.g. Acme Corporation or Apex Technologies"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               required

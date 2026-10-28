@@ -1,6 +1,7 @@
 """
 backend/app/core/config.py
 Application-wide settings loaded from environment variables / .env file.
+Supports both MySQL (local dev) and PostgreSQL (Render cloud) via DATABASE_URL.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -11,12 +12,16 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     SECRET_KEY: str = "change-me-in-production"
 
-    # ── Database ───────────────────────────────────────────────────────────
+    # ── Database (individual fields — local MySQL dev) ──────────────────────
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_NAME: str = "brandguard_ai"
     DB_USER: str = ""
     DB_PASSWORD: str = ""
+
+    # ── Database (single URL — Render / cloud PostgreSQL) ───────────────────
+    # Set DATABASE_URL in Render env vars and this takes priority.
+    DATABASE_URL: str = ""
 
     # ── AI (optional) ──────────────────────────────────────────────────────
     OPENAI_API_KEY: str = ""
@@ -30,7 +35,19 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """Build a SQLAlchemy-compatible MySQL connection URL."""
+        """
+        Return a SQLAlchemy-compatible DB connection URL.
+        Priority: DATABASE_URL env var > individual DB_* fields.
+        Fixes Render's 'postgres://' prefix to 'postgresql+psycopg2://'.
+        """
+        if self.DATABASE_URL:
+            url = self.DATABASE_URL
+            # Render supplies postgres:// — SQLAlchemy 2.x needs postgresql://
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+            elif url.startswith("postgresql://") and "+psycopg2" not in url:
+                url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            return url
         if not self.DB_USER or not self.DB_PASSWORD:
             return ""
         return (
@@ -40,8 +57,8 @@ class Settings(BaseSettings):
 
     @property
     def db_configured(self) -> bool:
-        """True only when the minimum DB credentials are present."""
-        return bool(self.DB_USER and self.DB_PASSWORD and self.DB_NAME)
+        """True only when a usable DB connection string can be built."""
+        return bool(self.database_url)
 
 
 @lru_cache

@@ -2,6 +2,7 @@
 backend/app/main.py
 FastAPI application entry point for Brandguard AI.
 """
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -23,23 +24,32 @@ app = FastAPI(
     title="Brandguard AI API",
     description=(
         "Backend API for Brandguard AI — an AI-assisted brand governance platform. "
-        "Built by SYNTAX DUO (Vanshika Tailor & Lokendra Singh Shekhawat)."
+        "Enforces brand guidelines, disclaimers, and copy consistency across enterprise communications."
     ),
+
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
 )
 
-# ── CORS (allow local Vite dev server) ────────────────────────────────────────
+# ── CORS ───────────────────────────────────────────────────────────────────────
+# FRONTEND_URL is set as an environment variable on Render (the deployed frontend).
+_allowed_origins = [
+    "http://localhost:5173",   # default Vite dev port
+    "http://localhost:5174",   # secondary Vite dev port
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+]
+_frontend_url = os.getenv("FRONTEND_URL", "").strip()
+if _frontend_url:
+    _allowed_origins.append(_frontend_url)
+    # Also allow without trailing slash variant
+    _allowed_origins.append(_frontend_url.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",   # default Vite port
-        "http://localhost:5174",   # secondary Vite port
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,7 +68,14 @@ app.include_router(settings_router.router,  prefix="/api")
 
 
 
-# ── Root redirect hint ────────────────────────────────────────────────────────
+from fastapi.responses import RedirectResponse
+
+# ── Root redirect hint & aliases ──────────────────────────────────────────────
+@app.get("/docs", include_in_schema=False)
+def redirect_to_docs():
+    return RedirectResponse(url="/api/docs")
+
+
 @app.get("/", include_in_schema=False)
 def root():
     return {
@@ -67,3 +84,4 @@ def root():
         "health": "/api/health",
         "version": "1.0.0",
     }
+

@@ -23,7 +23,8 @@ def health_check():
         "application": "ok",
         "version": "0.1.0",
         "project": "Brandguard AI",
-        "team": "SYNTAX DUO",
+        "team": "Brandguard AI",
         "environment": settings.APP_ENV,
+
         "database": db_status,
     }

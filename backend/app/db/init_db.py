@@ -152,13 +152,14 @@ def init_db() -> bool:
             db.commit()
 
         # Seed default demo user if not present or link company
-        existing_user = db.query(User).filter(User.email == "judge@syntaxduo.com").first()
+        existing_user = db.query(User).filter(User.email == "judge@brandguard.ai").first()
+
         if not existing_user:
-            print("Seeding default demo user (judge@syntaxduo.com)...")
+            print("Seeding default demo user (judge@brandguard.ai)...")
             from app.core.security import hash_password
             demo_user = User(
-                full_name="SYNTAX DUO Judge",
-                email="judge@syntaxduo.com",
+                full_name="Demo Judge",
+                email="judge@brandguard.ai",
                 hashed_password=hash_password("demo123"),
                 role="judge",
                 company_id=company.id,
@@ -169,10 +170,9 @@ def init_db() -> bool:
         else:
             if not existing_user.company_id and company:
                 existing_user.company_id = company.id
-                db.commit()
-            if not existing_user.full_name:
-                existing_user.full_name = "SYNTAX DUO Judge"
-                db.commit()
+            existing_user.full_name = "Demo Judge"
+            db.commit()
+
 
     print("Database initialization complete.")
     return True

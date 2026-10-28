@@ -17,6 +17,7 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const navigate = useNavigate()
+  const user = auth.getUser()
 
   function handleLogout() {
     auth.clearSession()
@@ -50,13 +51,20 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
+      {/* Footer: Dynamic Logged-in User Information */}
       <div className="sidebar-footer">
-        <div className="sidebar-team">
-          <strong>SYNTAX DUO</strong><br />
-          Vanshika Tailor<br />
-          Lokendra Singh Shekhawat
+        <div className="sidebar-team" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <strong style={{ color: 'var(--color-gold)', fontSize: '12px' }}>
+            {user?.company?.name || 'Brandguard AI'}
+          </strong>
+          <span style={{ color: 'rgba(247, 246, 240, 0.8)', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            👤 {user?.full_name || user?.name || 'Brand Administrator'}
+          </span>
+          <span style={{ color: 'rgba(247, 246, 240, 0.45)', fontSize: '10px' }}>
+            {user?.role === 'judge' ? 'Verified Auditor / Judge' : 'Brand Administrator'}
+          </span>
         </div>
+
 
         {/* Subtle Logout Button */}
         <button

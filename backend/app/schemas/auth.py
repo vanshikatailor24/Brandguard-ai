@@ -32,7 +32,8 @@ class UserResponse(BaseModel):
     email: str
     full_name: str | None = None
     role: str = "judge"
-    name: str = "SYNTAX DUO Judge"
+    name: str = "Demo Judge"
+
     company_id: int | None = None
     company: Optional[CompanyBrief] = None
     has_completed_onboarding: bool = False

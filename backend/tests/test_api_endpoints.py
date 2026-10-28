@@ -16,7 +16,8 @@ class TestAPIEndpoints:
         data = response.json()
         assert data.get("application") == "ok"
         assert "database" in data
-        assert data.get("team") == "SYNTAX DUO"
+        assert data.get("team") == "Brandguard AI"
+
 
     def test_root_route_returns_api_info(self):
         response = client.get("/")
