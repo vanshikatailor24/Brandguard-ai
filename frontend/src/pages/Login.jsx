@@ -47,7 +47,11 @@ export default function Login() {
 
       if (data && data.access_token) {
         auth.setSession(data.access_token, data.user)
-        navigate('/onboarding', { replace: true })
+        if (data.user?.has_completed_onboarding) {
+          navigate('/overview', { replace: true })
+        } else {
+          navigate('/onboarding', { replace: true })
+        }
       } else {
         throw new Error('Authentication succeeded but no access token received.')
       }
@@ -89,7 +93,11 @@ export default function Login() {
 
       if (data && data.access_token) {
         auth.setSession(data.access_token, data.user)
-        navigate('/onboarding', { replace: true })
+        if (data.user?.has_completed_onboarding) {
+          navigate('/overview', { replace: true })
+        } else {
+          navigate('/onboarding', { replace: true })
+        }
       } else {
         throw new Error('Sign up succeeded but session could not be established.')
       }
