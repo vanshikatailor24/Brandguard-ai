@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { useFetch } from '../hooks/useFetch'
 import { api } from '../services/api'
+import { auth } from '../services/auth'
 
 const ELEMENT_TYPES = [
   { value: 'brand_name',       label: 'Brand Name' },
@@ -24,6 +25,8 @@ export default function Settings() {
     []
   )
   const protectedElements = peData?.elements ?? []
+  const currentUser = auth.getUser() || {}
+  const userRole = auth.getRole()
 
   // Add protected element state
   const [showAddForm, setShowAddForm] = useState(false)
@@ -62,6 +65,10 @@ export default function Settings() {
   }
 
   async function handleDeleteProtectedElement(id, name) {
+    if (!auth.isAdminOrJudge()) {
+      alert('Action Restricted: Only Brand Administrators and Judges can delete protected brand assets.')
+      return
+    }
     if (!window.confirm(`Delete protected element "${name}"?`)) return
     try {
       await api.deleteProtectedElement(id)
@@ -78,7 +85,7 @@ export default function Settings() {
         <div className="page-hero-title">Workspace Settings &amp; Protected Elements</div>
         <div className="page-hero-sub">
           Configure protected brand assets, guard core identities against unauthorized modification,
-          and monitor system connectivity and diagnostics.
+          and monitor system connectivity, AI fallback, and diagnostics.
         </div>
       </div>
 
@@ -92,12 +99,14 @@ export default function Settings() {
                 Guarded assets that cannot be altered or overwritten during automatic correction
               </div>
             </div>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => setShowAddForm(!showAddForm)}
-            >
-              {showAddForm ? 'Cancel' : '+ Add Asset'}
-            </button>
+            {auth.isAdminOrJudge() && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => setShowAddForm(!showAddForm)}
+              >
+                {showAddForm ? 'Cancel' : '+ Add Asset'}
+              </button>
+            )}
           </div>
 
           {showAddForm && (
@@ -217,13 +226,16 @@ export default function Settings() {
                   <div style={{ fontSize: 12, color: '#6b7671' }}>{pe.description}</div>
                 )}
               </div>
-              <button
-                className="btn btn-ghost btn-sm"
-                style={{ color: 'var(--color-error)' }}
-                onClick={() => handleDeleteProtectedElement(pe.id, pe.canonical_text)}
-              >
-                ✕
-              </button>
+              {auth.isAdminOrJudge() && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--color-error)' }}
+                  onClick={() => handleDeleteProtectedElement(pe.id, pe.canonical_text)}
+                  title="Remove protected asset"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -234,8 +246,8 @@ export default function Settings() {
           <div className="card" style={{ marginBottom: 20 }}>
             <div className="section-header">
               <div>
-                <div className="section-title">System Diagnostics</div>
-                <div className="section-sub">Host server and database connectivity status</div>
+                <div className="section-title">System Diagnostics &amp; Engine</div>
+                <div className="section-sub">Host server, database connectivity, and AI fallback</div>
               </div>
               <button className="btn btn-ghost btn-sm" onClick={refetchSys}>
                 🔄 Refresh
@@ -250,16 +262,13 @@ export default function Settings() {
               <div style={{ fontSize: 13, lineHeight: 1.8 }}>
                 <div style={{ marginBottom: 12, padding: '10px 14px', background: 'var(--color-sage)', borderRadius: 8 }}>
                   <div>
-                    <strong>MySQL Database Status:</strong>{' '}
+                    <strong>Database Storage Engine:</strong>{' '}
                     <span className={`badge ${sysData.database?.status === 'connected' ? 'badge-success' : 'badge-warning'}`}>
-                      {sysData.database?.status || 'Unknown'}
+                      {sysData.database?.status || 'Unknown'} ({sysData.database?.engine || 'sqlite'})
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>
                     {sysData.database?.message}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#6b7671', marginTop: 2 }}>
-                    Target: {sysData.database?.host}:{sysData.database?.port}/{sysData.database?.name}
                   </div>
                 </div>
 
@@ -277,12 +286,19 @@ export default function Settings() {
 
                 <div style={{ padding: '10px 14px', background: 'var(--color-sage)', borderRadius: 8 }}>
                   <div>
-                    <strong>AI Provider Keys:</strong>{' '}
-                    {sysData.ai_integration?.openai_configured || sysData.ai_integration?.google_ai_configured ? (
-                      <span className="badge badge-success">Configured</span>
+                    <strong>AI &amp; LLM Governance:</strong>{' '}
+                    {sysData.ai_integration?.openai_configured || sysData.ai_integration?.gemini_configured ? (
+                      <span className="badge badge-success">
+                        Active ({sysData.ai_integration?.active_provider?.toUpperCase()})
+                      </span>
                     ) : (
-                      <span className="badge badge-sage">Deterministic Rules Active (No external API required)</span>
+                      <span className="badge badge-sage">
+                        Deterministic Rules Active (Zero-Crash Fallback Guaranteed)
+                      </span>
                     )}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>
+                    Fallback Engine: {sysData.ai_integration?.fallback_engine || 'Local Deterministic Rules + Contextual Heuristics'}
                   </div>
                 </div>
               </div>
@@ -291,15 +307,26 @@ export default function Settings() {
             )}
           </div>
 
-          {/* Honest Roadmap Notice */}
+          {/* Active Session & Role-Based Access Control Info */}
           <div className="card">
             <div className="section-title" style={{ marginBottom: 8 }}>
-              Authentication &amp; Multi-Tenant Status
+              Active Session &amp; Role-Based Access Control (RBAC)
             </div>
-            <div style={{ fontSize: 13, color: '#6b7671', lineHeight: 1.6 }}>
-              Brandguard AI currently runs as an open local workspace prototype.
-              Role-based permissions (RBAC) and user authentication (OAuth/JWT) are reserved for enterprise multi-tenant deployments.
-              Local configuration is managed securely via <code style={{ background: '#f1f5f9', padding: '2px 4px', borderRadius: 4 }}>backend/.env</code>.
+            <div style={{ fontSize: 13, color: '#4b5563', lineHeight: 1.6 }}>
+              <div style={{ marginBottom: 8 }}>
+                <strong>Current Active User:</strong> {currentUser.full_name || currentUser.name || 'Demo Judge'} ({currentUser.email || 'judge@brandguard.ai'})
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <strong>Assigned Role:</strong>{' '}
+                <span className="badge badge-gold" style={{ textTransform: 'capitalize' }}>
+                  {userRole}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: '#6b7671', borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 8 }}>
+                • <strong>Administrator (Admin):</strong> Full governance authority, brand rule authoring, document deletion, and system configuration.<br/>
+                • <strong>Auditor / Judge:</strong> Evaluation authority, multi-rule testing, OCR inspection, and auditable history inspection.<br/>
+                • <strong>Contributor / Editor:</strong> Content review submissions, automatic 'Fix It for Me' remediation, and guideline discovery.
+              </div>
             </div>
           </div>
         </div>

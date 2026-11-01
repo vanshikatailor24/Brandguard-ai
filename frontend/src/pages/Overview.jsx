@@ -2,7 +2,7 @@
  * frontend/src/pages/Overview.jsx
  * Dashboard Overview: Real application statistics, recent reviews, and active brand rules.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useFetch } from '../hooks/useFetch'
 import { api } from '../services/api'
 import { auth } from '../services/auth'
@@ -21,10 +21,11 @@ function StatCard({ label, value, sub, icon }) {
 
 export default function Overview() {
   const navigate = useNavigate()
+  const location = useLocation()
   const user = auth.getUser()
   const displayName = user?.full_name || user?.name || (user?.email ? user.email.split('@')[0] : 'Brand Administrator')
   const companyName = user?.company?.name
-
+  const accessDenied = location.state?.accessDenied
 
   const { data: reviewsData, loading: reviewsLoading, error: reviewsError } =
     useFetch(() => api.getReviews({ limit: 5 }), [])
@@ -41,6 +42,13 @@ export default function Overview() {
 
   return (
     <div>
+      {/* Access Guard Notice */}
+      {accessDenied && (
+        <div className="alert alert-warning" style={{ marginBottom: 16 }}>
+          ⚠️ <strong>Access Notice:</strong> That area requires elevated Administrator or Auditor permissions. You have been redirected to Overview.
+        </div>
+      )}
+
       {/* Hero */}
       <div className="page-hero">
         <div className="page-hero-title">Welcome, {displayName} 👋</div>
@@ -206,12 +214,12 @@ export default function Overview() {
         )}
       </div>
 
-      {/* Rules Status */}
+      {/* Active Rules Highlight */}
       <div className="card">
         <div className="section-header">
           <div>
-            <div className="section-title">Active Brand Guidelines</div>
-            <div className="section-sub">Authoritative rules currently active in the review engine</div>
+            <div className="section-title">Active Authoritative Brand Rules</div>
+            <div className="section-sub">Approved rules actively enforced during content evaluation</div>
           </div>
           <button
             id="manage-rules-btn"
@@ -224,63 +232,60 @@ export default function Overview() {
 
         {rulesLoading && (
           <div className="loading-container">
-            <span className="spinner" /> Loading active guidelines…
+            <span className="spinner" /> Loading active rules…
           </div>
         )}
 
         {!rulesLoading && rules.length === 0 && (
-          <div className="empty-state" style={{ padding: 28 }}>
+          <div className="empty-state">
             <div className="empty-state-icon">📋</div>
             <div className="empty-state-title">No Approved Rules</div>
             <div className="empty-state-text">
-              No brand rules have been approved yet. Reviews will report "no rules" until guidelines are created and approved.
+              Upload a policy document or add guidelines manually to begin enforcing brand standards.
             </div>
             <button
+              id="add-rules-from-empty"
               className="btn btn-primary"
-              style={{ marginTop: 14 }}
+              style={{ marginTop: 16 }}
               onClick={() => navigate('/guidelines')}
             >
-              Add Brand Rule
+              Add First Rule
             </button>
           </div>
         )}
 
         {!rulesLoading && rules.length > 0 && (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Authoritative Rule Phrase</th>
-                <th>Severity</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rules.slice(0, 5).map((rule) => (
-                <tr key={rule.id}>
-                  <td>
-                    <span className="badge badge-gold">{rule.category.replace(/_/g, ' ')}</span>
-                  </td>
-                  <td style={{ maxWidth: 450, fontWeight: 600 }}>
-                    {rule.rule_text}
-                    {rule.is_protected && (
-                      <span className="badge badge-gold" style={{ marginLeft: 6, fontSize: 11 }}>
-                        🛡️ Protected
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`badge ${rule.severity === 'critical' ? 'badge-error' : 'badge-warning'}`}>
-                      {rule.severity || 'warning'}
-                    </span>
-                  </td>
-                  <td>
-                    <StatusBadge status="approved" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {rules.slice(0, 6).map((rule) => (
+              <div
+                key={rule.id}
+                style={{
+                  background: 'var(--color-sage)',
+                  border: '1px solid var(--color-sage-dk)',
+                  borderRadius: 8,
+                  padding: 14,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span className="badge badge-sage" style={{ fontSize: 11 }}>
+                    {rule.category.replace(/_/g, ' ')}
+                  </span>
+                  <span
+                    className={`badge ${rule.severity === 'critical' ? 'badge-error' : 'badge-warning'}`}
+                    style={{ fontSize: 11 }}
+                  >
+                    {rule.severity}
+                  </span>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                  "{rule.rule_text}"
+                </div>
+                {rule.description && (
+                  <div style={{ fontSize: 12, color: '#6b7671' }}>{rule.description}</div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

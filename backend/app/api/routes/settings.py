@@ -14,17 +14,21 @@ from app.schemas.protected_element import (
     ProtectedElementListResponse,
 )
 from app.services.image_service import is_tesseract_installed
+from app.services.ai_service import get_ai_status
 from app.core.config import get_settings
+from app.api.deps import require_admin_or_judge, AuthUser
 
 router = APIRouter(tags=["Settings"])
 
 
 @router.get("/settings/system")
+@router.get("/v1/settings/system")
 def get_system_diagnostics():
-    """Return backend environment status, DB connectivity, and engine availability."""
+    """Return backend environment status, DB connectivity, engine availability, and AI status."""
     settings = get_settings()
     db_status = check_db_connection()
     ocr_installed = is_tesseract_installed()
+    ai_status = get_ai_status()
 
     return {
         "app_env": settings.APP_ENV,
@@ -33,6 +37,7 @@ def get_system_diagnostics():
             "host": settings.DB_HOST,
             "port": settings.DB_PORT,
             "name": settings.DB_NAME,
+            "engine": db_status.get("engine", "sqlite"),
             "message": db_status.get("message"),
         },
         "ocr_engine": {
@@ -41,13 +46,19 @@ def get_system_diagnostics():
             "message": "OCR enabled" if ocr_installed else "Host lacks tesseract binary; manual image transcript input available.",
         },
         "ai_integration": {
-            "openai_configured": bool(settings.OPENAI_API_KEY),
-            "google_ai_configured": bool(settings.GOOGLE_AI_API_KEY),
+            "openai_configured": ai_status["openai_configured"],
+            "google_ai_configured": ai_status["google_ai_configured"],
+            "gemini_configured": ai_status["gemini_configured"],
+            "active_provider": ai_status["active_provider"],
+            "active_model": ai_status["active_model"],
+            "fallback_guarantee": ai_status["fallback_guarantee"],
+            "fallback_engine": ai_status["fallback_engine"],
         },
     }
 
 
 @router.get("/settings/protected-elements", response_model=ProtectedElementListResponse)
+@router.get("/v1/settings/protected-elements", response_model=ProtectedElementListResponse)
 def list_protected_elements(
     company_id: int | None = Query(None),
     db: Session = Depends(get_db),
@@ -67,11 +78,13 @@ def list_protected_elements(
 
 
 @router.post("/settings/protected-elements", response_model=ProtectedElementOut, status_code=status.HTTP_201_CREATED)
+@router.post("/v1/settings/protected-elements", response_model=ProtectedElementOut, status_code=status.HTTP_201_CREATED)
 def create_protected_element(
     payload: ProtectedElementCreate,
+    current_user: AuthUser = Depends(require_admin_or_judge),
     db: Session = Depends(get_db),
 ):
-    """Register a new protected brand element."""
+    """Register a new protected brand element (requires Admin or Judge role)."""
     try:
         pe = ProtectedBrandElement(
             company_id=payload.company_id,
@@ -90,8 +103,13 @@ def create_protected_element(
 
 
 @router.delete("/settings/protected-elements/{element_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_protected_element(element_id: int, db: Session = Depends(get_db)):
-    """Remove a protected brand element."""
+@router.delete("/v1/settings/protected-elements/{element_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_protected_element(
+    element_id: int,
+    current_user: AuthUser = Depends(require_admin_or_judge),
+    db: Session = Depends(get_db),
+):
+    """Remove a protected brand element (requires Admin or Judge role)."""
     try:
         pe = db.query(ProtectedBrandElement).filter(ProtectedBrandElement.id == element_id).first()
         if not pe:
@@ -99,17 +117,27 @@ def delete_protected_element(element_id: int, db: Session = Depends(get_db)):
         db.delete(pe)
         db.commit()
         return None
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
 
 @router.get("/companies")
+@router.get("/v1/companies")
 def list_companies(db: Session = Depends(get_db)):
     """List registered companies/workspaces."""
     try:
         companies = db.query(Company).all()
         return [
-            {"id": c.id, "name": c.name, "industry": c.industry, "created_at": c.created_at}
+            {
+                "id": c.id,
+                "name": c.name,
+                "industry": c.industry,
+                "industry_type": c.industry_type,
+                "tagline": c.tagline,
+                "created_at": c.created_at,
+            }
             for c in companies
         ]
     except RuntimeError as exc:

@@ -23,6 +23,7 @@ router = APIRouter(tags=["Insights"])
 
 
 @router.get("/insights", response_model=InsightsResponse)
+@router.get("/v1/insights", response_model=InsightsResponse)
 def get_governance_insights(
     company_id: int | None = Query(None, description="Filter by company ID"),
     db: Session = Depends(get_db),
@@ -58,52 +59,52 @@ def get_governance_insights(
 
         pass_rate = round((passed_reviews / total_reviews * 100), 1) if total_reviews > 0 else 0.0
 
-        # Health status
-        if total_reviews == 0:
-            health_status = "No Data"
-        elif pass_rate >= 80:
-            health_status = "Excellent"
-        elif pass_rate >= 50:
-            health_status = "Moderate"
-        else:
-            health_status = "Needs Attention"
-
-        # Content type breakdown
-        type_stats = defaultdict(lambda: {"count": 0, "pass": 0, "fail": 0})
-        category_counter = Counter()
-
+        # 4. Content types breakdown with pass and fail breakdown
+        content_type_stats = defaultdict(lambda: {"count": 0, "pass_count": 0, "fail_count": 0})
         for r in reviews:
-            c_type = r.content_type or "general"
-            type_stats[c_type]["count"] += 1
+            ct = r.content_type or "general"
+            content_type_stats[ct]["count"] += 1
             if r.review_status == "pass":
-                type_stats[c_type]["pass"] += 1
+                content_type_stats[ct]["pass_count"] += 1
             elif r.review_status == "fail":
-                type_stats[c_type]["fail"] += 1
+                content_type_stats[ct]["fail_count"] += 1
 
+        reviews_by_content_type = [
+            ContentTypeCount(
+                content_type=ct,
+                count=stats["count"],
+                pass_count=stats["pass_count"],
+                fail_count=stats["fail_count"],
+            )
+            for ct, stats in sorted(content_type_stats.items(), key=lambda x: x[1]["count"], reverse=True)
+        ]
+
+        # 5. Top violation categories breakdown
+        category_counter = Counter()
+        for r in reviews:
             if r.findings_json:
                 try:
                     findings = json.loads(r.findings_json)
                     for f in findings:
-                        cat = f.get("rule_category")
-                        if cat:
-                            category_counter[cat] += 1
+                        if f.get("finding_type") == "violation":
+                            category_counter[f.get("rule_category", "other")] += 1
                 except Exception:
                     pass
 
-        content_type_list = [
-            ContentTypeCount(
-                content_type=k,
-                count=v["count"],
-                pass_count=v["pass"],
-                fail_count=v["fail"],
-            )
-            for k, v in type_stats.items()
+        top_violated_categories = [
+            ViolationCategoryCount(category=cat, count=cnt)
+            for cat, cnt in category_counter.most_common(5)
         ]
 
-        top_categories = [
-            ViolationCategoryCount(category=k, count=v)
-            for k, v in category_counter.most_common(5)
-        ]
+        # 6. Governance health status
+        if total_reviews == 0:
+            health_status = "No Data"
+        elif pass_rate >= 80.0:
+            health_status = "Excellent"
+        elif pass_rate >= 50.0:
+            health_status = "Moderate"
+        else:
+            health_status = "Needs Attention"
 
         return InsightsResponse(
             total_reviews=total_reviews,
@@ -114,8 +115,8 @@ def get_governance_insights(
             approved_rules=approved_rules,
             draft_rules=draft_rules,
             total_documents=total_documents,
-            reviews_by_content_type=content_type_list,
-            top_violated_categories=top_categories,
+            reviews_by_content_type=reviews_by_content_type,
+            top_violated_categories=top_violated_categories,
             governance_health_status=health_status,
         )
     except RuntimeError as exc:

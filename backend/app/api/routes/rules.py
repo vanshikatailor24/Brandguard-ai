@@ -8,9 +8,8 @@ Supports:
   - Get single rule
   - Update rule (with safety guards for protected rules)
   - Approve / Reject rule
-  - Delete rule
+  - Delete rule (protected by RBAC)
 """
-import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
@@ -21,11 +20,13 @@ from app.schemas.brand_rule import (
     BrandRuleOut,
     BrandRuleListResponse,
 )
+from app.api.deps import require_admin_or_judge, AuthUser
 
 router = APIRouter(tags=["Rules"])
 
 
 @router.get("/rules", response_model=BrandRuleListResponse)
+@router.get("/v1/rules", response_model=BrandRuleListResponse)
 def list_rules(
     company_id: int | None = Query(None, description="Filter by company ID"),
     category: str | None = Query(None, description="Filter by category"),
@@ -56,13 +57,21 @@ def list_rules(
 
 
 @router.post("/rules", response_model=BrandRuleOut, status_code=status.HTTP_201_CREATED)
+@router.post("/v1/rules", response_model=BrandRuleOut, status_code=status.HTTP_201_CREATED)
 def create_rule(payload: BrandRuleCreate, db: Session = Depends(get_db)):
     """Create a new brand rule."""
+    clean_rule_text = payload.rule_text.strip()
+    if not clean_rule_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Rule text cannot be empty.",
+        )
+
     try:
         rule = BrandRule(
             company_id=payload.company_id,
             category=payload.category,
-            rule_text=payload.rule_text.strip(),
+            rule_text=clean_rule_text,
             description=payload.description.strip() if payload.description else None,
             severity=payload.severity,
             is_approved=payload.is_approved,
@@ -79,6 +88,7 @@ def create_rule(payload: BrandRuleCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/rules/{rule_id}", response_model=BrandRuleOut)
+@router.get("/v1/rules/{rule_id}", response_model=BrandRuleOut)
 def get_rule(rule_id: int, db: Session = Depends(get_db)):
     """Fetch details of a specific brand rule."""
     try:
@@ -91,6 +101,7 @@ def get_rule(rule_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/rules/{rule_id}", response_model=BrandRuleOut)
+@router.patch("/v1/rules/{rule_id}", response_model=BrandRuleOut)
 def update_rule(rule_id: int, payload: BrandRuleUpdate, db: Session = Depends(get_db)):
     """
     Update an existing brand rule.
@@ -124,11 +135,14 @@ def update_rule(rule_id: int, payload: BrandRuleUpdate, db: Session = Depends(ge
         db.commit()
         db.refresh(rule)
         return BrandRuleOut.model_validate(rule)
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
 
 @router.post("/rules/{rule_id}/approve", response_model=BrandRuleOut)
+@router.post("/v1/rules/{rule_id}/approve", response_model=BrandRuleOut)
 def toggle_approval(rule_id: int, approved: bool = Query(True), db: Session = Depends(get_db)):
     """Approve or unapprove a brand rule."""
     try:
@@ -139,13 +153,20 @@ def toggle_approval(rule_id: int, approved: bool = Query(True), db: Session = De
         db.commit()
         db.refresh(rule)
         return BrandRuleOut.model_validate(rule)
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_rule(rule_id: int, db: Session = Depends(get_db)):
-    """Delete a brand rule."""
+@router.delete("/v1/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_rule(
+    rule_id: int,
+    current_user: AuthUser = Depends(require_admin_or_judge),
+    db: Session = Depends(get_db),
+):
+    """Delete a brand rule (requires Admin or Judge role)."""
     try:
         rule = db.query(BrandRule).filter(BrandRule.id == rule_id).first()
         if not rule:
@@ -158,5 +179,7 @@ def delete_rule(rule_id: int, db: Session = Depends(get_db)):
         db.delete(rule)
         db.commit()
         return None
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))

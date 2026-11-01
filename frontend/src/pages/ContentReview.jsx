@@ -47,7 +47,10 @@ export default function ContentReview() {
   // ── Text Review Submission ──────────────────────────────────────────────────
   async function handleSubmitReview(e) {
     if (e) e.preventDefault()
-    if (text.trim().length < 5) return
+    if (text.trim().length < 5) {
+      setError('Please enter at least 5 characters to review.')
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -110,6 +113,25 @@ export default function ContentReview() {
   function handleImageSelected(e) {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (file.size > 10 * 1024 * 1024) {
+      setImageError(
+        'Image file exceeds maximum allowed size of 10MB (' +
+          (file.size / (1024 * 1024)).toFixed(1) +
+          'MB). Please choose a smaller image.'
+      )
+      setImageFile(null)
+      setImagePreview(null)
+      return
+    }
+
+    const ext = file.name.slice(((file.name.lastIndexOf('.') - 1) >>> 0) + 2).toLowerCase()
+    if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+      setImageError("Unsupported image format '." + ext + "'. Allowed formats: .png, .jpg, .jpeg, .webp.")
+      setImageFile(null)
+      setImagePreview(null)
+      return
+    }
 
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))

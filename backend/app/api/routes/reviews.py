@@ -3,7 +3,7 @@ backend/app/api/routes/reviews.py
 REST API endpoints for Content Review, Review History, and Automatic Text Correction.
 
 Supports:
-  - Submit content for brand governance review (deterministic + contextual)
+  - Submit content for brand governance review (deterministic + contextual heuristics + AI fallback)
   - List review history
   - Get single review details
   - "Fix It for Me": Generate automatic correction suggestions & diffs
@@ -29,6 +29,7 @@ from app.schemas.content_review import (
 )
 from app.services.review_engine import run_review
 from app.services.correction_engine import generate_correction
+from app.services.ai_service import analyze_tone_nuance_with_ai
 
 router = APIRouter(tags=["Reviews"])
 
@@ -59,6 +60,7 @@ def _build_review_response(review: ContentReview) -> ReviewResponse:
 
 
 @router.get("/reviews", response_model=ReviewListResponse)
+@router.get("/v1/reviews", response_model=ReviewListResponse)
 def list_reviews(
     company_id: int | None = Query(None, description="Filter by company ID"),
     limit: int = Query(50, ge=1, le=200),
@@ -80,11 +82,25 @@ def list_reviews(
 
 
 @router.post("/reviews", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/v1/reviews", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
 def submit_review(payload: ReviewRequest, db: Session = Depends(get_db)):
     """
     Submit text content for brand-rule review.
     Evaluates against all approved brand rules for the company.
+    Includes zero-crash LLM tone assistance fallback integration.
     """
+    clean_text = payload.content_text.strip() if payload.content_text else ""
+    if not clean_text:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Content text cannot be empty.",
+        )
+    if len(clean_text) > 100_000:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Content text exceeds maximum permitted length (100,000 characters).",
+        )
+
     try:
         # Fetch only approved rules
         query = db.query(BrandRule).filter(BrandRule.is_approved.is_(True))
@@ -92,8 +108,8 @@ def submit_review(payload: ReviewRequest, db: Session = Depends(get_db)):
             query = query.filter(BrandRule.company_id == payload.company_id)
         approved_rules = query.all()
 
-        # Run review engine
-        result = run_review(payload.content_text, approved_rules)
+        # Run deterministic review engine + contextual heuristics
+        result = run_review(clean_text, approved_rules)
 
         # Convert findings to dictionary for storage and response
         findings_data = [
@@ -118,12 +134,37 @@ def submit_review(payload: ReviewRequest, db: Session = Depends(get_db)):
             for f in result.findings
         ]
 
-        title = payload.title or payload.content_text[:40].strip().replace("\n", " ") + "..."
+        # Seamless AI tone & nuance evaluation (zero-crash fallback guaranteed)
+        rules_context = [r.rule_text for r in approved_rules]
+        ai_eval = analyze_tone_nuance_with_ai(clean_text, rules_context)
+        if ai_eval.get("ai_applied") and ai_eval.get("tone_analysis"):
+            findings_data.append(
+                {
+                    "finding_id": f"fnd-ai-{len(findings_data) + 1}",
+                    "rule_id": None,
+                    "rule_category": "ai_tone_nuance",
+                    "rule_text": "Contextual Tone Evaluation",
+                    "finding_type": "info",
+                    "severity": "info",
+                    "matched_text": None,
+                    "start_index": None,
+                    "end_index": None,
+                    "reason": f"AI Governance Insight ({ai_eval.get('provider')}): {ai_eval.get('tone_analysis')}",
+                    "applicable_rule": "Brand Tone & Clarity Standard",
+                    "evidence": f"Evaluated with {ai_eval.get('provider')} ({ai_eval.get('model')})",
+                    "certainty": "needs_review",
+                    "requires_human_review": True,
+                    "is_protected_conflict": False,
+                    "suggestion": "Review suggested tone adjustments if appropriate.",
+                }
+            )
+
+        title = payload.title or clean_text[:40].replace("\n", " ") + "..."
 
         db_review = ContentReview(
             company_id=payload.company_id,
             title=title,
-            content_text=payload.content_text,
+            content_text=clean_text,
             content_type=payload.content_type,
             review_status=result.review_status,
             findings_json=json.dumps(findings_data),
@@ -148,11 +189,16 @@ def submit_review(payload: ReviewRequest, db: Session = Depends(get_db)):
             message=result.message,
             created_at=db_review.created_at,
         )
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Review execution error: {exc}")
 
 
 @router.get("/reviews/{review_id}", response_model=ReviewResponse)
+@router.get("/v1/reviews/{review_id}", response_model=ReviewResponse)
 def get_review(review_id: int, db: Session = Depends(get_db)):
     """Fetch details of a past content review."""
     try:
@@ -160,11 +206,14 @@ def get_review(review_id: int, db: Session = Depends(get_db)):
         if not review:
             raise HTTPException(status_code=404, detail=f"Review #{review_id} not found.")
         return _build_review_response(review)
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
 
 @router.post("/reviews/correct", response_model=CorrectionResponse)
+@router.post("/v1/reviews/correct", response_model=CorrectionResponse)
 def auto_correct_content(payload: CorrectionRequest, db: Session = Depends(get_db)):
     """
     'Fix It for Me' — Generate proposed automatic text corrections for findings.
@@ -204,11 +253,14 @@ def auto_correct_content(payload: CorrectionRequest, db: Session = Depends(get_d
             protected_elements_guarded=result.protected_elements_guarded,
             has_changes=result.has_changes,
         )
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
 
 @router.post("/reviews/{review_id}/accept", response_model=ReviewResponse)
+@router.post("/v1/reviews/{review_id}/accept", response_model=ReviewResponse)
 def accept_correction(
     review_id: int,
     payload: dict,
@@ -229,5 +281,7 @@ def accept_correction(
             db.refresh(review)
 
         return _build_review_response(review)
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))

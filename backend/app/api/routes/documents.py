@@ -25,11 +25,13 @@ from app.services.document_service import (
     extract_text_from_document,
     extract_candidate_rules_from_text,
 )
+from app.api.deps import require_admin_or_judge, AuthUser
 
 router = APIRouter(tags=["Documents"])
 
 
 @router.get("/documents", response_model=DocumentListResponse)
+@router.get("/v1/documents", response_model=DocumentListResponse)
 def list_documents(
     company_id: int | None = Query(None, description="Filter by company ID"),
     db: Session = Depends(get_db),
@@ -49,6 +51,7 @@ def list_documents(
 
 
 @router.post("/documents/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/v1/documents/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
     company_id: int | None = Query(None),
@@ -146,8 +149,13 @@ async def upload_document(
 
 
 @router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_document(document_id: int, db: Session = Depends(get_db)):
-    """Delete a document and any unapproved candidate rules linked to it."""
+@router.delete("/v1/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(
+    document_id: int,
+    current_user: AuthUser = Depends(require_admin_or_judge),
+    db: Session = Depends(get_db),
+):
+    """Delete a document and any unapproved candidate rules linked to it (requires Admin or Judge role)."""
     try:
         doc = db.query(SourceDocument).filter(SourceDocument.id == document_id).first()
         if not doc:
@@ -155,5 +163,7 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
         db.delete(doc)
         db.commit()
         return None
+    except HTTPException:
+        raise
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))

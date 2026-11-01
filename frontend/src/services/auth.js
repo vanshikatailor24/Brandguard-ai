@@ -1,6 +1,6 @@
 /**
  * frontend/src/services/auth.js
- * Session and token persistence for Brandguard AI authentication.
+ * Session and token persistence for Brandguard AI authentication & RBAC.
  */
 
 const TOKEN_KEY = 'brandguard_auth_token'
@@ -81,5 +81,27 @@ export const auth = {
       return false
     }
   },
-}
 
+  /** Role-Based Access Control (RBAC) helpers */
+  getRole: () => {
+    try {
+      const user = auth.getUser()
+      return (user?.role || 'judge').toLowerCase()
+    } catch (_) {
+      return 'guest'
+    }
+  },
+
+  hasRole: (allowedRoles = []) => {
+    const role = auth.getRole()
+    const normalized = allowedRoles.map((r) => r.toLowerCase())
+    if (normalized.includes('user') && role === 'editor') return true
+    if (normalized.includes('editor') && role === 'user') return true
+    return normalized.includes(role)
+  },
+
+  isAdmin: () => auth.hasRole(['admin']),
+  isJudge: () => auth.hasRole(['judge']),
+  isAdminOrJudge: () => auth.hasRole(['admin', 'judge']),
+  isEditor: () => auth.hasRole(['editor', 'user']),
+}

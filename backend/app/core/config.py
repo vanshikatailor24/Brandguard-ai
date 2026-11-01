@@ -2,6 +2,7 @@
 backend/app/core/config.py
 Application-wide settings loaded from environment variables / .env file.
 Supports PostgreSQL (Render cloud), cloud MySQL, local MySQL, and automatic SQLite fallback.
+Provides clean hooks for LLM / Multimodal AI providers (OpenAI / Gemini) with local deterministic fallback.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -23,15 +24,37 @@ class Settings(BaseSettings):
     # Set DATABASE_URL in Render env vars and this takes priority.
     DATABASE_URL: str = ""
 
-    # ── AI (optional) ──────────────────────────────────────────────────────
+    # ── AI Providers (optional – seamless local engine fallback if unset) ───
     OPENAI_API_KEY: str = ""
     GOOGLE_AI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    GEMINI_MODEL: str = "gemini-1.5-flash"
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @property
+    def effective_gemini_key(self) -> str:
+        """Return either GOOGLE_AI_API_KEY or GEMINI_API_KEY if configured."""
+        return (self.GOOGLE_AI_API_KEY or self.GEMINI_API_KEY or "").strip()
+
+    @property
+    def is_ai_available(self) -> bool:
+        """True only if an external LLM provider API key is configured."""
+        return bool(self.OPENAI_API_KEY.strip() or self.effective_gemini_key)
+
+    @property
+    def active_ai_provider(self) -> str:
+        """Name of the active external AI provider, or 'local_fallback'."""
+        if self.OPENAI_API_KEY.strip():
+            return "openai"
+        if self.effective_gemini_key:
+            return "gemini"
+        return "local_fallback"
 
     @property
     def database_url(self) -> str:

@@ -1,6 +1,6 @@
 /**
  * frontend/src/App.jsx
- * Root router configuration for Brandguard AI with authentication route guards.
+ * Root router configuration for Brandguard AI with authentication and RBAC route guards.
  */
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import DashboardLayout from './layouts/DashboardLayout'
@@ -22,6 +22,20 @@ function ProtectedRoute({ children }) {
   const location = useLocation()
   if (!auth.isAuthenticated()) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+  return children
+}
+
+/**
+ * Role-based guard component: enforces RBAC for specific routes (Admin, Judge, Editor)
+ */
+function RoleRoute({ children, allowedRoles }) {
+  const location = useLocation()
+  if (!auth.isAuthenticated()) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+  if (allowedRoles && !auth.hasRole(allowedRoles)) {
+    return <Navigate to="/overview" state={{ accessDenied: true }} replace />
   }
   return children
 }
@@ -69,7 +83,6 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-
           <Route index element={<Navigate to="/overview" replace />} />
           <Route path="overview"   element={<Overview />} />
           <Route path="review"     element={<ContentReview />} />
@@ -77,7 +90,14 @@ export default function App() {
           <Route path="documents"  element={<PolicyDocuments />} />
           <Route path="history"    element={<ReviewHistory />} />
           <Route path="insights"   element={<Insights />} />
-          <Route path="settings"   element={<Settings />} />
+          <Route
+            path="settings"
+            element={
+              <RoleRoute allowedRoles={['admin', 'judge', 'editor', 'user']}>
+                <Settings />
+              </RoleRoute>
+            }
+          />
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/overview" replace />} />
         </Route>

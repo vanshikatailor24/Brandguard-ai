@@ -11,8 +11,8 @@
 ## 🔗 Application Links & Quick Access
 
 * **Live Render Backend API:** [https://brandguard-ai-2-yclr.onrender.com](https://brandguard-ai-2-yclr.onrender.com)
-* **Live Interactive Swagger UI:** [https://brandguard-ai-2-yclr.onrender.com/docs](https://brandguard-ai-2-yclr.onrender.com/docs)
-* **Live Backend Health Check:** [https://brandguard-ai-2-yclr.onrender.com/api/health](https://brandguard-ai-2-yclr.onrender.com/api/health)
+* **Live Interactive Swagger UI (REST API v1):** [https://brandguard-ai-2-yclr.onrender.com/docs](https://brandguard-ai-2-yclr.onrender.com/docs) (or [/api/docs](https://brandguard-ai-2-yclr.onrender.com/api/docs))
+* **Live Backend Health Check:** [https://brandguard-ai-2-yclr.onrender.com/api/health](https://brandguard-ai-2-yclr.onrender.com/api/health) (or [/api/v1/health](https://brandguard-ai-2-yclr.onrender.com/api/v1/health))
 * **Frontend Web Application (Local):** [http://localhost:5173](http://localhost:5173)
 * **Backend API Server (Local):** [http://localhost:8000](http://localhost:8000)
 * **GitHub Repository:** [https://github.com/vanshikatailor24/Brandguard-ai](https://github.com/vanshikatailor24/Brandguard-ai)
@@ -354,7 +354,7 @@ Execute the automated test suite across all 6 test modules:
 ```powershell
 pytest tests/ -v
 ```
-*(All 41 tests should pass in ~1.3s)*
+*(All 48 tests should pass in ~1.5s)*
 
 ### 4. Start the Backend API Server
 

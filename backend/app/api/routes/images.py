@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.brand_rule import BrandRule
-from app.schemas.content_review import ReviewResponse, ReviewFinding
+from app.schemas.image import ImageReviewResponse, ImageReviewSummary
 from app.services.image_service import (
     validate_image_file,
     extract_text_from_image,
@@ -23,7 +23,8 @@ from app.services.review_engine import run_review
 router = APIRouter(tags=["Images"])
 
 
-@router.post("/images/review")
+@router.post("/images/review", response_model=ImageReviewResponse)
+@router.post("/v1/images/review", response_model=ImageReviewResponse)
 async def review_image_content(
     file: UploadFile = File(...),
     manual_transcript: str | None = Form(None),
@@ -100,7 +101,5 @@ async def review_image_content(
         }
     except HTTPException:
         raise
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Image processing error: {exc}")
+        raise HTTPException(status_code=500, detail=f"Image review process encountered an error: {exc}")
