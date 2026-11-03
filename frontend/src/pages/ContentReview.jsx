@@ -3,7 +3,7 @@
  * Complete Content Review interface with Manual Guidance ("Guide Me"),
  * Automatic Correction ("Fix It for Me"), and Image Compliance workflows.
  */
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { api } from '../services/api'
 import StatusBadge from '../components/StatusBadge'
 
@@ -16,6 +16,18 @@ const CONTENT_TYPES = [
   { value: 'advertisement', label: 'Advertisement' },
 ]
 
+const SAMPLE_PASS = {
+  title: 'PureBites - Healthy Snacking Campaign',
+  contentType: 'social_post',
+  text: 'Enjoy delicious and nutritious snacks from PureBites! Made with quality ingredients to fuel your day. Results may vary based on individual dietary habits and health conditions. Approved by local food safety authority regulations.',
+}
+
+const SAMPLE_FAIL = {
+  title: 'pure bites - Special Launch Promo',
+  contentType: 'social_post',
+  text: 'Welcome to pure bites organic chips! Our new crunchy snacks give guaranteed weight loss in just 5 days with zero side effects. It is the cheapest in the world at only $4.99 per 250g pack.',
+}
+
 export default function ContentReview() {
   const [activeTab, setActiveTab] = useState('text') // 'text' | 'image'
 
@@ -26,6 +38,10 @@ export default function ContentReview() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
+
+  // Sample Selection State
+  const [showSampleDropdown, setShowSampleDropdown] = useState(false)
+  const sampleMenuRef = useRef(null)
 
   // Auto-Correction State ("Fix It for Me")
   const [correctionLoading, setCorrectionLoading] = useState(false)
@@ -43,6 +59,50 @@ export default function ContentReview() {
   const fileInputRef = useRef(null)
 
   const MAX_CHARS = 10_000
+
+  // Close sample dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (sampleMenuRef.current && !sampleMenuRef.current.contains(e.target)) {
+        setShowSampleDropdown(false)
+      }
+    }
+    if (showSampleDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showSampleDropdown])
+
+  function handleLoadSample(type) {
+    setShowSampleDropdown(false)
+    const sample = type === 'pass' ? SAMPLE_PASS : SAMPLE_FAIL
+    setText(sample.text)
+    setTitle(sample.title)
+    setContentType(sample.contentType)
+    setError(null)
+    setCorrectionData(null)
+    setCorrectionSuccessMsg(null)
+    setResult(null)
+
+    // Trigger immediate policy evaluation
+    setLoading(true)
+    api.submitReview({
+      content_text: sample.text,
+      title: sample.title,
+      content_type: sample.contentType,
+    })
+      .then((data) => {
+        setResult(data)
+      })
+      .catch((err) => {
+        setError(err.message ?? 'Review request failed.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }
 
   // ── Text Review Submission ──────────────────────────────────────────────────
   async function handleSubmitReview(e) {
@@ -259,16 +319,149 @@ export default function ContentReview() {
                   <div className="section-title">Draft Content</div>
                   <div className="section-sub">Paste or type copy to evaluate against approved rules</div>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => {
-                    setText("Check out Brand Guard for 100% guaranteed results! Lowest prices anywhere.")
-                    setTitle("Sample Marketing Campaign")
-                  }}
-                >
-                  ⚡ Load Sample
-                </button>
+                <div style={{ position: 'relative' }} ref={sampleMenuRef}>
+                  <button
+                    type="button"
+                    id="load-sample-dropdown-btn"
+                    className="btn btn-ghost btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    onClick={() => setShowSampleDropdown(!showSampleDropdown)}
+                  >
+                    <span>⚡</span>
+                    <span>Load Sample Data</span>
+                    <span style={{ fontSize: 10, transform: showSampleDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+                  </button>
+
+                  {showSampleDropdown && (
+                    <div
+                      id="sample-choice-dropdown"
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 'calc(100% + 8px)',
+                        background: '#13352c',
+                        border: '1px solid rgba(197, 164, 109, 0.45)',
+                        borderRadius: 12,
+                        boxShadow: '0 16px 36px rgba(0,0,0,0.55)',
+                        width: 340,
+                        zIndex: 100,
+                        padding: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: '#C5A46D',
+                          padding: '6px 10px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.8px',
+                          borderBottom: '1px solid rgba(255,255,255,0.08)',
+                          marginBottom: 6,
+                        }}
+                      >
+                        Select Pre-Loaded Test Case
+                      </div>
+
+                      {/* Sample 1: Pass Case */}
+                      <button
+                        type="button"
+                        id="sample-pass-option"
+                        onClick={() => handleLoadSample('pass')}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid rgba(134, 239, 172, 0.25)',
+                          borderRadius: 8,
+                          padding: '10px 12px',
+                          color: '#F7F6F0',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          marginBottom: 6,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(134, 239, 172, 0.12)'
+                          e.currentTarget.style.borderColor = 'rgba(134, 239, 172, 0.5)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+                          e.currentTarget.style.borderColor = 'rgba(134, 239, 172, 0.25)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: '#86efac' }}>
+                            ✅ Sample 1: Clean &amp; Compliant
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              background: 'rgba(134, 239, 172, 0.2)',
+                              color: '#86efac',
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              fontWeight: 700,
+                            }}
+                          >
+                            PASS
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'rgba(247, 246, 240, 0.75)', lineHeight: 1.35 }}>
+                          PureBites snack copy strictly adhering to brand guidelines with mandatory food disclaimers.
+                        </div>
+                      </button>
+
+                      {/* Sample 2: Fail Case */}
+                      <button
+                        type="button"
+                        id="sample-fail-option"
+                        onClick={() => handleLoadSample('fail')}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid rgba(252, 165, 165, 0.25)',
+                          borderRadius: 8,
+                          padding: '10px 12px',
+                          color: '#F7F6F0',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(252, 165, 165, 0.12)'
+                          e.currentTarget.style.borderColor = 'rgba(252, 165, 165, 0.5)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+                          e.currentTarget.style.borderColor = 'rgba(252, 165, 165, 0.25)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: '#fca5a5' }}>
+                            ⚠️ Sample 2: Brand Violations
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              background: 'rgba(252, 165, 165, 0.2)',
+                              color: '#fca5a5',
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              fontWeight: 700,
+                            }}
+                          >
+                            FAIL / FIX
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'rgba(247, 246, 240, 0.75)', lineHeight: 1.35 }}>
+                          Casing (&ldquo;pure bites&rdquo;), prohibited health claims (&ldquo;weight loss&rdquo;), pricing, &amp; missing disclaimers.
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <form onSubmit={handleSubmitReview}>
