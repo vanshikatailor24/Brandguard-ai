@@ -109,9 +109,8 @@ export default function ContentReview() {
     setCorrectionData(null)
   }
 
-  // ── Image Review Submission ─────────────────────────────────────────────────
-  function handleImageSelected(e) {
-    const file = e.target.files?.[0]
+  // ── Image Review & Automated OCR Pipeline ──────────────────────────────────
+  async function processImageFile(file, overrideTranscript = null) {
     if (!file) return
 
     if (file.size > 10 * 1024 * 1024) {
@@ -135,32 +134,89 @@ export default function ContentReview() {
 
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
-    setImageResult(null)
     setImageError(null)
-  }
-
-  async function handleSubmitImageReview(e) {
-    e.preventDefault()
-    if (!imageFile) return
-
     setImageLoading(true)
-    setImageError(null)
-    setImageResult(null)
 
     const formData = new FormData()
-    formData.append('file', imageFile)
-    if (manualTranscript.trim()) {
-      formData.append('manual_transcript', manualTranscript.trim())
+    formData.append('file', file)
+    if (overrideTranscript !== null ? overrideTranscript.trim() : manualTranscript.trim()) {
+      formData.append('manual_transcript', (overrideTranscript !== null ? overrideTranscript : manualTranscript).trim())
     }
 
     try {
       const data = await api.reviewImage(formData)
       setImageResult(data)
+      const extracted = data.transcript || data.extracted_text || ''
+      if (extracted && overrideTranscript === null) {
+        setManualTranscript(extracted)
+      }
     } catch (err) {
-      setImageError(err.message ?? 'Image review failed.')
+      setImageError(err.message ?? 'Image OCR & compliance review failed.')
     } finally {
       setImageLoading(false)
     }
+  }
+
+  function handleImageSelected(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setManualTranscript('')
+    processImageFile(file)
+  }
+
+  function handleLoadSampleGraphic() {
+    // Generate an in-browser sample promotional graphic banner with text that triggers brand review rules
+    const canvas = document.createElement('canvas')
+    canvas.width = 800
+    canvas.height = 360
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Forest green background gradient
+    const grad = ctx.createLinearGradient(0, 0, 800, 360)
+    grad.addColorStop(0, '#173F35')
+    grad.addColorStop(1, '#0c221c')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, 800, 360)
+
+    // Gold accent frame
+    ctx.strokeStyle = '#C5A46D'
+    ctx.lineWidth = 4
+    ctx.strokeRect(12, 12, 776, 336)
+
+    // Headline with unapproved variant "Brand Guard"
+    ctx.fillStyle = '#F7F6F0'
+    ctx.font = 'bold 30px system-ui, sans-serif'
+    ctx.fillText('Brand Guard Promotional Launch', 40, 80)
+
+    // Subheadline with prohibited claim "100% Guaranteed" and "Lowest prices"
+    ctx.fillStyle = '#d4bb8e'
+    ctx.font = '22px system-ui, sans-serif'
+    ctx.fillText('100% Guaranteed Results with Lowest Prices Anywhere!', 40, 140)
+
+    // Description text
+    ctx.fillStyle = '#E3EDE6'
+    ctx.font = '16px system-ui, sans-serif'
+    ctx.fillText('Experience AI-assisted brand governance with automated policy verification.', 40, 200)
+    ctx.fillText('Limited-time special discount — satisfaction 100% guaranteed.', 40, 235)
+
+    // Footer note
+    ctx.fillStyle = 'rgba(247, 246, 240, 0.6)'
+    ctx.font = '13px system-ui, sans-serif'
+    ctx.fillText('Brandguard AI Enterprise • Official Compliance Campaign Banner', 40, 305)
+
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const file = new File([blob], 'sample_brand_banner.png', { type: 'image/png' })
+      setManualTranscript('')
+      processImageFile(file)
+    }, 'image/png')
+  }
+
+  async function handleSubmitImageReview(e) {
+    if (e) e.preventDefault()
+    if (!imageFile) return
+    processImageFile(imageFile, manualTranscript)
   }
 
   return (
@@ -535,6 +591,14 @@ export default function ContentReview() {
                 <div className="section-title">Image &amp; Graphic Review</div>
                 <div className="section-sub">Validate visual assets, banner text, and ad graphics</div>
               </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={handleLoadSampleGraphic}
+                disabled={imageLoading}
+              >
+                ⚡ Load Sample Graphic
+              </button>
             </div>
 
             <form onSubmit={handleSubmitImageReview}>
@@ -555,7 +619,7 @@ export default function ContentReview() {
                   {imageFile ? imageFile.name : 'Click to select or drop image'}
                 </div>
                 <div style={{ fontSize: 12, color: '#6b7671' }}>
-                  Supports PNG, JPG, and WEBP (max 10MB)
+                  Supports PNG, JPG, and WEBP (max 10MB) — Auto-scanned via OCR
                 </div>
               </div>
 
@@ -570,17 +634,31 @@ export default function ContentReview() {
               )}
 
               <div className="form-group">
-                <label className="form-label" htmlFor="manual-transcript">
-                  Image Transcript / Copy Text <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional if OCR active)</span>
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label className="form-label" htmlFor="manual-transcript" style={{ marginBottom: 0 }}>
+                    Image Transcript / Copy Text
+                  </label>
+                  {manualTranscript ? (
+                    <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>
+                      ✓ Auto-extracted via OCR (editable)
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 11, color: '#9ca3af' }}>
+                      Auto-populated on upload
+                    </span>
+                  )}
+                </div>
                 <textarea
                   id="manual-transcript"
                   className="form-textarea"
                   rows={4}
-                  placeholder="Enter the copy displayed on your graphic to review it against brand guidelines..."
+                  placeholder={imageLoading ? "Scanning image copy via OCR pipeline..." : "Image text will automatically extract here upon upload. You can also edit it..."}
                   value={manualTranscript}
                   onChange={(e) => setManualTranscript(e.target.value)}
                 />
+                <div style={{ fontSize: 11, color: '#6b7671', marginTop: 4 }}>
+                  Extracted automatically upon upload. Adjust the text above anytime to test specific rules.
+                </div>
               </div>
 
               {imageError && (
@@ -594,7 +672,13 @@ export default function ContentReview() {
                 className="btn btn-primary btn-lg btn-block"
                 disabled={imageLoading || !imageFile}
               >
-                {imageLoading ? <span className="spinner" /> : '🔍 Analyze Image Compliance'}
+                {imageLoading ? (
+                  <>
+                    <span className="spinner" /> Analyzing Image Copy…
+                  </>
+                ) : (
+                  '🔍 Analyze Image Compliance'
+                )}
               </button>
             </form>
           </div>
@@ -605,13 +689,29 @@ export default function ContentReview() {
               <div className="section-title">Image Analysis &amp; Findings</div>
             </div>
 
+            {imageLoading && !imageResult && (
+              <div className="loading-container" style={{ padding: '40px 16px' }}>
+                <span className="spinner" /> Scanning graphic and analyzing brand compliance…
+              </div>
+            )}
+
             {imageResult ? (
               <div>
                 {/* Metadata */}
                 <div style={{ background: 'var(--color-sage)', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
                   <div><strong>File:</strong> {imageResult.filename}</div>
                   <div><strong>Dimensions:</strong> {imageResult.metadata?.width} × {imageResult.metadata?.height} px ({imageResult.metadata?.format})</div>
-                  <div><strong>OCR Engine:</strong> {imageResult.ocr_engine_available ? 'Active (Tesseract)' : 'Manual transcript mode'}</div>
+                  <div style={{ marginTop: 4 }}>
+                    <strong>OCR Engine:</strong>{' '}
+                    <span className="badge badge-success" style={{ marginLeft: 4 }}>
+                      {imageResult.ocr_engine || 'Automated OCR Active'}
+                    </span>
+                  </div>
+                  {imageResult.ocr_status_message && (
+                    <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>
+                      {imageResult.ocr_status_message}
+                    </div>
+                  )}
                 </div>
 
                 {/* Disclaimer */}
@@ -650,11 +750,15 @@ export default function ContentReview() {
                 )}
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '48px 16px', color: '#6b7671' }}>
-                <div style={{ fontSize: 36, marginBottom: 8 }}>🖼️</div>
-                <div style={{ fontWeight: 600 }}>No Image Analyzed</div>
-                <div style={{ fontSize: 13 }}>Upload an image banner or social post to inspect brand compliance.</div>
-              </div>
+              !imageLoading && (
+                <div style={{ textAlign: 'center', padding: '48px 16px', color: '#6b7671' }}>
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>🖼️</div>
+                  <div style={{ fontWeight: 600 }}>No Image Analyzed</div>
+                  <div style={{ fontSize: 13 }}>
+                    Upload an image banner or click &ldquo;⚡ Load Sample Graphic&rdquo; to inspect brand compliance.
+                  </div>
+                </div>
+              )
             )}
           </div>
         </div>

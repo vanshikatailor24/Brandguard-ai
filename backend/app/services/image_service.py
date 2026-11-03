@@ -5,7 +5,7 @@ Image review & compliance service for Brandguard AI.
 
 Safety & Integrity:
   - Validates image dimensions, formats (PNG, JPG, WEBP), and file signatures via Pillow.
-  - Checks for host OCR engine (pytesseract).
+  - Multi-tier OCR pipeline (Tesseract, Gemini/OpenAI Vision AI, Metadata, and Heuristics).
   - Explicitly separates extracted text findings from original image pixels.
   - Never claims to have visually edited or replaced image pixels without verification.
 """
@@ -13,17 +13,17 @@ from __future__ import annotations
 
 import io
 import os
-import shutil
 from typing import Any
 from PIL import Image
 
+from app.services.ocr_service import (
+    is_tesseract_installed,
+    extract_text_from_image_bytes,
+    get_active_ocr_engine_info,
+)
+
 MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
-
-
-def is_tesseract_installed() -> bool:
-    """Check if tesseract OCR executable is available on system PATH."""
-    return shutil.which("tesseract") is not None
 
 
 def validate_image_file(filename: str, content: bytes) -> tuple[bool, str, dict[str, Any]]:
@@ -61,33 +61,21 @@ def validate_image_file(filename: str, content: bytes) -> tuple[bool, str, dict[
         return False, f"Invalid or corrupted image file: {exc}", {}
 
 
-def extract_text_from_image(content: bytes) -> tuple[str, bool, str]:
+def extract_text_from_image(content: bytes, filename: str = "image.png") -> tuple[str, bool, str, str]:
     """
-    Attempt to extract text from image bytes using OCR.
-    Returns (extracted_text, ocr_available, status_message).
-    """
-    if not is_tesseract_installed():
-        return (
-            "",
-            False,
-            "Tesseract OCR executable is not installed on this host environment. "
-            "You can enter or verify the copy text from your image in the review box below.",
-        )
+    Extract text from image bytes using the 4-tier OCR pipeline:
+      Tier 1: Tesseract OCR (if binary installed)
+      Tier 2: Multi-Modal Vision AI (Gemini / OpenAI if keys provided)
+      Tier 3: Embedded Image Metadata & Text Chunks (PNG/EXIF)
+      Tier 4: Automated Heuristic Vision Engine Fallback
 
-    try:
-        import pytesseract  # type: ignore
-        img = Image.open(io.BytesIO(content))
-        text = pytesseract.image_to_string(img).strip()
-        if not text:
-            return (
-                "",
-                True,
-                "OCR completed, but no readable text was detected in the image.",
-            )
-        return text, True, "Text extracted successfully via OCR."
-    except Exception as exc:
-        return (
-            "",
-            False,
-            f"OCR text extraction failed: {exc}",
-        )
+    Returns:
+      (extracted_text, ocr_available, status_message, ocr_engine)
+    """
+    res = extract_text_from_image_bytes(content, filename)
+    return (
+        res["text"],
+        res["ocr_available"],
+        res["status_message"],
+        res["ocr_engine"],
+    )

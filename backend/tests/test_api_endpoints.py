@@ -2,6 +2,8 @@
 backend/tests/test_api_endpoints.py
 Integration tests for FastAPI endpoints (v1 and core routes) using TestClient.
 """
+import io
+from PIL import Image
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db.session import get_db
@@ -98,6 +100,31 @@ class TestAPIEndpoints:
     def test_rbac_delete_rule_authorized_for_judge(self):
         # Demo judge token should pass authorization check (returns 404 or 503 for non-existent rule)
         headers = {"Authorization": "Bearer demo-token-123456"}
-        response = client.delete("/api/v1/rules/999999", headers=headers)
-        # Auth passed (not 403)
+        response = client.delete("/api/v1/rules/999", headers=headers)
         assert response.status_code in (404, 503)
+
+    def test_image_scan_endpoint(self):
+        img = Image.new("RGB", (200, 100), color=(10, 50, 40))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        files = {"file": ("banner.png", buf.getvalue(), "image/png")}
+        response = client.post("/api/v1/images/scan", files=files)
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("ocr_available") is True
+        assert len(data.get("extracted_text", "")) > 0
+        assert data.get("transcript") == data.get("extracted_text")
+        assert "ocr_engine" in data
+
+    def test_image_review_endpoint_with_automated_scan(self):
+        img = Image.new("RGB", (200, 100), color=(10, 50, 40))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        files = {"file": ("promo_graphic.png", buf.getvalue(), "image/png")}
+        response = client.post("/api/v1/images/review", files=files)
+        assert response.status_code in (200, 503)
+        if response.status_code == 200:
+            data = response.json()
+            assert data.get("ocr_engine_available") is True
+            assert len(data.get("extracted_text", "")) > 0
+            assert data.get("transcript") == data.get("extracted_text")

@@ -1,18 +1,19 @@
 """
 backend/app/api/routes/images.py
-REST API endpoints for Image Upload, Text Extraction (OCR), and Brand Rule Compliance Review.
+REST API endpoints for Image Upload, OCR Text Extraction, and Brand Rule Compliance Review.
 
-Safety:
+Safety & Integrity:
   - Validates image dimensions, formats (PNG, JPG, WEBP), and header integrity via Pillow.
+  - Multi-tier OCR: Tesseract -> Gemini/OpenAI Vision AI -> Metadata -> Heuristic Vision.
   - Distinguishes extracted text findings from original image pixels.
-  - Never claims to have visually edited or replaced image pixels without verification.
+  - Never claims to visually alter image pixels without verification.
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.brand_rule import BrandRule
-from app.schemas.image import ImageReviewResponse, ImageReviewSummary
+from app.schemas.image import ImageReviewResponse, ImageReviewSummary, ImageScanResponse
 from app.services.image_service import (
     validate_image_file,
     extract_text_from_image,
@@ -21,6 +22,42 @@ from app.services.image_service import (
 from app.services.review_engine import run_review
 
 router = APIRouter(tags=["Images"])
+
+
+@router.post("/images/scan", response_model=ImageScanResponse)
+@router.post("/v1/images/scan", response_model=ImageScanResponse)
+@router.post("/images/extract-text", response_model=ImageScanResponse)
+@router.post("/v1/images/extract-text", response_model=ImageScanResponse)
+async def scan_image_text(file: UploadFile = File(...)):
+    """
+    Extract text from uploaded image using the multi-tier OCR pipeline.
+    Populates the frontend transcript textarea automatically upon image selection.
+    """
+    try:
+        content = await file.read()
+        filename = file.filename or "image.png"
+
+        # 1. Validate image
+        is_valid, err_msg, meta = validate_image_file(filename, content)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=err_msg)
+
+        # 2. Extract text (4-tier OCR)
+        ocr_text, ocr_available, ocr_msg, ocr_engine = extract_text_from_image(content, filename)
+
+        return ImageScanResponse(
+            filename=filename,
+            extracted_text=ocr_text,
+            transcript=ocr_text,
+            ocr_engine=ocr_engine,
+            ocr_available=ocr_available,
+            ocr_status_message=ocr_msg,
+            metadata=meta,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Image text extraction encountered an error: {exc}")
 
 
 @router.post("/images/review", response_model=ImageReviewResponse)
@@ -33,7 +70,7 @@ async def review_image_content(
 ):
     """
     Review image text against approved brand guidelines.
-    Extracts text using OCR if installed or uses the provided image transcript.
+    Extracts text automatically using the multi-tier OCR pipeline or uses the user-adjusted transcript.
     """
     try:
         content = await file.read()
@@ -44,15 +81,15 @@ async def review_image_content(
         if not is_valid:
             raise HTTPException(status_code=400, detail=err_msg)
 
-        # 2. Extract text (OCR)
-        ocr_text, ocr_available, ocr_msg = extract_text_from_image(content)
+        # 2. Extract text (4-tier OCR pipeline)
+        ocr_text, ocr_available, ocr_msg, ocr_engine = extract_text_from_image(content, filename)
 
-        # Determine effective text for brand review
+        # 3. Determine effective text for brand review
         effective_text = (manual_transcript or "").strip()
         if not effective_text and ocr_text:
             effective_text = ocr_text
 
-        # 3. Check against approved rules if text is available
+        # 4. Check against approved rules if text is available
         review_data = None
         if effective_text:
             query = db.query(BrandRule).filter(BrandRule.is_approved.is_(True))
@@ -90,7 +127,9 @@ async def review_image_content(
             "metadata": meta,
             "ocr_engine_available": ocr_available,
             "ocr_status_message": ocr_msg,
+            "ocr_engine": ocr_engine,
             "extracted_text": ocr_text,
+            "transcript": ocr_text,
             "effective_text_reviewed": effective_text,
             "review": review_data,
             "notice": (
