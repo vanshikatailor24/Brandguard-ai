@@ -31,3 +31,4 @@ class ImageReviewResponse(BaseModel):
     effective_text_reviewed: str = Field("", description="Effective text reviewed against brand rules")
     review: Optional[ImageReviewSummary] = Field(None, description="Compliance review results")
     notice: str = Field(..., description="Governance note on original pixel preservation")
+
