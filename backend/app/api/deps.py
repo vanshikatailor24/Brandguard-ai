@@ -124,3 +124,4 @@ def require_roles(allowed_roles: list[str]) -> Callable[[AuthUser], AuthUser]:
 require_admin = require_roles(["admin"])
 require_admin_or_judge = require_roles(["admin", "judge"])
 require_authenticated = require_roles(["admin", "judge", "editor", "user"])
+

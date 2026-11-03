@@ -144,3 +144,4 @@ def analyze_tone_nuance_with_ai(
             logger.warning("Gemini tone analysis fallback triggered: %s", exc)
 
     return fallback_result
+

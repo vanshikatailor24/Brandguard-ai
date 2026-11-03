@@ -101,3 +101,7 @@ class CorrectionResponse(BaseModel):
     manual_guidance: list[str]
     protected_elements_guarded: list[str]
     has_changes: bool
+
+
+class AcceptCorrectionRequest(BaseModel):
+    corrected_text: str = Field(..., min_length=1, description="The accepted and approved corrected text.")

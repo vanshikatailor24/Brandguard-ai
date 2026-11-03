@@ -19,3 +19,4 @@ class HealthResponse(BaseModel):
     team: str = Field("Brandguard AI", description="Team identifier")
     environment: str = Field("production", description="Active runtime environment")
     database: dict[str, Any] = Field(..., description="Database connectivity details")
+

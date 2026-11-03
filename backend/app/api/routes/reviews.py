@@ -26,6 +26,7 @@ from app.schemas.content_review import (
     CorrectionRequest,
     CorrectionResponse,
     ProposedChangeSchema,
+    AcceptCorrectionRequest,
 )
 from app.services.review_engine import run_review
 from app.services.correction_engine import generate_correction
@@ -90,10 +91,10 @@ def submit_review(payload: ReviewRequest, db: Session = Depends(get_db)):
     Includes zero-crash LLM tone assistance fallback integration.
     """
     clean_text = payload.content_text.strip() if payload.content_text else ""
-    if not clean_text:
+    if len(clean_text) < 5:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Content text cannot be empty.",
+            detail="Content text must contain at least 5 characters.",
         )
     if len(clean_text) > 100_000:
         raise HTTPException(
@@ -263,7 +264,7 @@ def auto_correct_content(payload: CorrectionRequest, db: Session = Depends(get_d
 @router.post("/v1/reviews/{review_id}/accept", response_model=ReviewResponse)
 def accept_correction(
     review_id: int,
-    payload: dict,
+    payload: AcceptCorrectionRequest,
     db: Session = Depends(get_db),
 ):
     """
@@ -274,7 +275,7 @@ def accept_correction(
         if not review:
             raise HTTPException(status_code=404, detail=f"Review #{review_id} not found.")
 
-        corrected = payload.get("corrected_text")
+        corrected = payload.corrected_text.strip()
         if corrected:
             review.corrected_text = corrected
             db.commit()
