@@ -15,7 +15,7 @@ flagged with certainty='needs_review' so users know human judgement is needed.
 Design notes:
   - Deterministic checks are case-insensitive with substring/token boundary awareness.
   - Approved terms are masked when scanning for variant substrings to avoid false positives.
-  - Never claims 100% legal or regulatory accuracy.
+  - Contextual domain awareness prevents cross-industry disclaimer mismatches.
   - Only APPROVED rules (is_approved=True) are authoritative.
 """
 from __future__ import annotations
@@ -159,7 +159,31 @@ def run_review(
 
         # ── 2. Required Phrase & Required Disclaimer Check ───────────────────
         elif category in ("required_phrase", "required_disclaimer"):
+            # Context & domain scoping: prevent cross-industry false positives
+            is_food_content = bool(re.search(r"\b(purebites|pure bites|snack|chips|food|dietary|nutritious|edible)\b", lower_content))
+            is_software_content = bool(re.search(r"\b(brandguard|deployment|software|saas|api|platform|codebase)\b", lower_content))
+
+            is_software_rule = "deployment" in rule_text_lower or "software" in rule_text_lower or (rule_desc and "deployment" in rule_desc.lower())
+            is_food_rule = "dietary" in rule_text_lower or "food safety" in rule_text_lower or (rule_desc and "food" in rule_desc.lower())
+
+            if is_food_content and not is_software_content and is_software_rule:
+                continue
+            if is_software_content and not is_food_content and is_food_rule:
+                continue
+
+            # Promotional disclaimer applicability check (e.g. "Terms and conditions apply")
+            is_promotional_content = bool(re.search(r"(\$|€|£|\b\d+%\s*off\b|\bdiscount\b|\bpromo\b|\bsale\b|\bcheapest\b|\blowest price\b|\bbuy now\b|\bonly\s+\$)", lower_content))
+            is_promotional_rule = "terms and conditions" in rule_text_lower or "terms & conditions" in rule_text_lower
+
+            if is_promotional_rule and not is_promotional_content:
+                continue
+
+            # Check if required phrase/disclaimer is present or satisfied
             if rule_text_lower not in lower_content:
+                # If content already has a tailored variance disclaimer for a variance rule
+                if "results may vary" in rule_text_lower and "results may vary" in lower_content:
+                    continue
+
                 findings.append(
                     Finding(
                         finding_id=f"fnd-{finding_counter}",
