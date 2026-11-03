@@ -343,3 +343,4 @@ def extract_text_from_image_bytes(content: bytes, filename: str = "image.png") -
         "ocr_engine": engine,
         "status_message": msg,
     }
+
