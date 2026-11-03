@@ -13,7 +13,7 @@ from app.schemas.protected_element import (
     ProtectedElementOut,
     ProtectedElementListResponse,
 )
-from app.services.image_service import is_tesseract_installed
+from app.services.ocr_service import get_active_ocr_engine_info
 from app.services.ai_service import get_ai_status
 from app.core.config import get_settings
 from app.api.deps import require_admin_or_judge, AuthUser
@@ -27,7 +27,7 @@ def get_system_diagnostics():
     """Return backend environment status, DB connectivity, engine availability, and AI status."""
     settings = get_settings()
     db_status = check_db_connection()
-    ocr_installed = is_tesseract_installed()
+    ocr_info = get_active_ocr_engine_info()
     ai_status = get_ai_status()
 
     return {
@@ -41,9 +41,9 @@ def get_system_diagnostics():
             "message": db_status.get("message"),
         },
         "ocr_engine": {
-            "available": ocr_installed,
-            "engine": "Tesseract OCR" if ocr_installed else "Not Installed",
-            "message": "OCR enabled" if ocr_installed else "Host lacks tesseract binary; manual image transcript input available.",
+            "available": ocr_info["available"],
+            "engine": ocr_info["engine"],
+            "message": ocr_info["message"],
         },
         "ai_integration": {
             "openai_configured": ai_status["openai_configured"],

@@ -119,9 +119,11 @@ export const api = {
   deleteDocument: (id) =>
     request(`/documents/${id}`, { method: 'DELETE' }),
 
-  /** Images */
+  /** Images & OCR */
   reviewImage: (formData) =>
     request('/images/review', { method: 'POST', body: formData }),
+  scanImage: (formData) =>
+    request('/images/scan', { method: 'POST', body: formData }),
 
   /** Insights */
   getInsights: (params = {}) => {

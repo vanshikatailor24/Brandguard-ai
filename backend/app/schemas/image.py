@@ -27,8 +27,19 @@ class ImageReviewResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, description="Image technical metadata")
     ocr_engine_available: bool = Field(..., description="Whether host OCR engine is active")
     ocr_status_message: str = Field(..., description="Status of OCR text extraction")
+    ocr_engine: str = Field("Automated OCR", description="Name of OCR engine or fallback used")
     extracted_text: str = Field("", description="Raw copy extracted from image via OCR")
+    transcript: str = Field("", description="Extracted copy transcript for frontend form mapping")
     effective_text_reviewed: str = Field("", description="Effective text reviewed against brand rules")
     review: Optional[ImageReviewSummary] = Field(None, description="Compliance review results")
     notice: str = Field(..., description="Governance note on original pixel preservation")
 
+
+class ImageScanResponse(BaseModel):
+    filename: str = Field(..., description="Original image filename")
+    extracted_text: str = Field("", description="Raw copy extracted from image via OCR")
+    transcript: str = Field("", description="Extracted copy transcript for frontend form mapping")
+    ocr_engine: str = Field("Automated OCR", description="Name of OCR engine or fallback used")
+    ocr_available: bool = Field(True, description="Whether automated OCR successfully ran")
+    ocr_status_message: str = Field("", description="Status message of OCR text extraction")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Image technical metadata")
