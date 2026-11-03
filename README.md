@@ -8,11 +8,13 @@
 [![Backend](https://img.shields.io/badge/fastapi-v0.111.0-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Database](https://img.shields.io/badge/MySQL%20%2F%20PostgreSQL-SQLAlchemy%202.0-orange?logo=mysql)](https://www.sqlalchemy.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Drive Link](https://drive.google.com/drive/folders/1HifeIEI611FmxFO_GZ11pYH0q5hagOaI)]
 
 **Team Name:** SYNTAX DUO  
 **Team Members:** Vanshika Tailor · Lokendra Singh Shekhawat  
 **Repository:** [https://github.com/vanshikatailor24/Brandguard-ai](https://github.com/vanshikatailor24/Brandguard-ai)  
-**Primary Development Branch:** `develop` · **Release Branch:** `main`
+**Primary Development Branch:** `develop` · **Release Branch:** `main`  
+**Status:** Round 3 Final Release (Hardened & Judge-Ready) ✅
 
 ---
 
