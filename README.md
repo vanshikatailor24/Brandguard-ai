@@ -8,7 +8,7 @@
 [![Backend](https://img.shields.io/badge/fastapi-v0.111.0-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Database](https://img.shields.io/badge/MySQL%20%2F%20PostgreSQL-SQLAlchemy%202.0-orange?logo=mysql)](https://www.sqlalchemy.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Drive Link](https://drive.google.com/drive/folders/1HifeIEI611FmxFO_GZ11pYH0q5hagOaI)]
+[![Drive Link](https://img.shields.io/badge/Drive-Link-blue.svg)](https://drive.google.com/drive/folders/1HifeIEI611FmxFO_GZ11pYH0q5hagOaI)
 
 **Team Name:** SYNTAX DUO  
 **Team Members:** Vanshika Tailor · Lokendra Singh Shekhawat  
